@@ -12,8 +12,8 @@ dependencies:
     specifier: 4.0.5
     version: 4.0.5
   '@astrojs/sitemap':
-    specifier: 3.1.2
-    version: 3.1.2
+    specifier: 3.1.5
+    version: 3.1.5
   '@astrojs/tailwind':
     specifier: 5.1.0
     version: 5.1.0(astro@4.5.16)(tailwindcss@3.4.3)
@@ -297,11 +297,12 @@ packages:
       kleur: 4.1.5
     dev: false
 
-  /@astrojs/sitemap@3.1.2:
-    resolution: {integrity: sha512-FxOJldIl5ltZ5CNjocQxHkAO9orwHBjqtaU28o4smobp9vowS0nbGp+I9CrPxkzWdl1crSDm9vjL9tnvG1DSug==}
+  /@astrojs/sitemap@3.1.5:
+    resolution: {integrity: sha512-GLdzJ01387Uzb8RKYpsYLlg/GzoPnGbmDeQNkarSE11i2+l9Qp8Nj/WoTEy9nkTS25fxxy0kxDfJmreeVleCqg==}
     dependencies:
       sitemap: 7.1.1
-      zod: 3.22.4
+      stream-replace-string: 2.0.0
+      zod: 3.23.8
     dev: false
 
   /@astrojs/tailwind@5.1.0(astro@4.5.16)(tailwindcss@3.4.3):
@@ -1879,7 +1880,7 @@ packages:
   /@types/sax@1.2.7:
     resolution: {integrity: sha512-rO73L89PJxeYM3s3pPPjiPgVVcymqU490g0YO5n5By0k2Erzj6tay/4lr1CHAAU4JyOWd1rpQ8bCf6cZfHU96A==}
     dependencies:
-      '@types/node': 17.0.45
+      '@types/node': 20.11.17
     dev: false
 
   /@types/semver@7.5.7:
@@ -7080,6 +7081,10 @@ packages:
       bl: 5.1.0
     dev: false
 
+  /stream-replace-string@2.0.0:
+    resolution: {integrity: sha512-TlnjJ1C0QrmxRNrON00JvaFFlNh5TTG00APw23j74ET7gkQpTASi6/L2fuiav8pzK715HXtUeClpBTw2NPSn6w==}
+    dev: false
+
   /streamx@2.16.1:
     resolution: {integrity: sha512-m9QYj6WygWyWa3H1YY69amr4nVgy61xfjys7xO7kviL5rfIEc2naf+ewFiOA+aEJD7y0JO3h2GoiUv4TDwEGzQ==}
     requiresBuild: true
@@ -8110,6 +8115,10 @@ packages:
 
   /zod@3.22.4:
     resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
+    dev: false
+
+  /zod@3.23.8:
+    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
     dev: false
 
   /zwitch@2.0.4:
