@@ -7,14 +7,14 @@ import ThemeToggle from "../ThemeToggle.astro";
 const url = new URL(Astro.request.url);
 ---
 
-<header class="group relative mb-28 flex items-center sm:ps-[4.5rem]" id="main-header">
+<header class="items-cente group relative mb-28 flex" id="main-header">
 	<div class="flex sm:flex-col">
 		<a
 			aria-current={url.pathname === "/" ? "page" : false}
 			class="inline-flex items-center grayscale hover:filter-none sm:relative sm:inline-block"
 			href="/"
 		>
-			<svg
+			<!-- <svg
 				aria-hidden="true"
 				class="me-3 h-10 w-6 sm:absolute sm:start-[-4.5rem] sm:me-0 sm:h-20 sm:w-12"
 				fill="none"
@@ -33,7 +33,8 @@ const url = new URL(Astro.request.url);
 					d="m136 53.333 45.333-26.666v120L226.667 120V80L272 53.333V160l-90.667 53.333v240L136 480V306.667L45.334 360V240l45.333-26.667v53.334L136 240V53.333Z"
 					fill="#53C68C"></path>
 				<path d="M45.334 240 0 213.334v120L45.334 360V240Z" fill="#B04304"></path>
-			</svg>
+			</svg> -->
+
 			<span class="text-xl font-bold sm:text-2xl">Rafal Wilinski</span>
 		</a>
 		<nav

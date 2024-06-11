@@ -15,7 +15,7 @@ const cactusTech: { desc: string; href: string; title: string; stars?: string }[
 		title: "ChatWithCloud",
 	},
 	{
-		desc: "Professional GUI Client for DynamoDB.",
+		desc: "Professional GUI Client for DynamoDB. Over 2,500 paying customers.",
 		href: "https://dynobase.dev",
 		title: "Dynobase",
 	},
@@ -30,6 +30,12 @@ const cactusTech: { desc: string; href: string; title: string; stars?: string }[
 		href: "https://github.com/RafalWilinski/telegram-chatgpt-concierge-bot",
 		title: "telegram-chatgpt-concierge-bot",
 		stars: "1.1k",
+	},
+	{
+		desc: "Contributed some, brought Kotlin and Java support",
+		href: "https://github.com/serverless/serverless/pulls?page=1&q=is%3Apr+author%3ARafalWilinski+is%3Aclosed",
+		title: "serverless-framework",
+		stars: "46k",
 	},
 ];
 
@@ -63,7 +69,6 @@ const history: { desc: string; href: string; title: string; dates: string }[] = 
 
 <PageLayout meta={{ title: "Home" }}>
 	<section>
-		<h1 class="title mb-6">Shalom</h1>
 		<p class="mb-4">
 			Hi, I’m Rafal. Currently AI Tech Lead @ Vendr. I am also the creator of
 			<a class="cactus-link" href="https://dynobase.dev/">Dynobase</a> and <a
@@ -89,17 +94,20 @@ const history: { desc: string; href: string; title: string; dates: string }[] = 
 		<h2 class="title mb-4 text-xl">Work History</h2>
 		<dl class="space-y-4">
 			{
-				history.map(({ desc, href, title, stars }) => (
-					<div class="flex flex-col gap-1 sm:flex-row">
-						<dt>
-							<span class="flex">
-								<a class="cactus-link" href={href} rel="noopener noreferrer" target="_blank">
-									{title}
-								</a>
-								-{"   "}
-							</span>
-						</dt>
-						<dd>{desc}</dd>
+				history.map(({ desc, href, title, dates }) => (
+					<div>
+						<p class="text-xs text-gray-500">{dates} </p>
+						<div class="flex flex-col gap-1 sm:flex-row">
+							<dt>
+								<span class="flex">
+									<a class="cactus-link" href={href} rel="noopener noreferrer" target="_blank">
+										{title}
+									</a>
+									-{"   "}
+								</span>
+							</dt>
+							<dd>{desc}</dd>
+						</div>
 					</div>
 				))
 			}
