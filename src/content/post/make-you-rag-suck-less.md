@@ -1,9 +1,9 @@
 ---
 title: "Make your RAG Suck Less"
-description: "This post is for testing the draft post functionality"
-publishDate: "10 March 2024"
+description: "Common pitfalls in with designing and implementing RAGs"
+publishDate: "11 June 2024"
 tags: ["test"]
-draft: true
+draft: false
 ---
 
 ## UX
@@ -60,9 +60,9 @@ existing testing frameworks like Jest in the following way:
 ```javascript
 // Unit test-like eval
 test("is giving correct answer", async () => {
-  const resp = await generateResponse("What’s the name of the CEO?");
-  expect(resp.retrievedChunks).toContain(CHUNK_ABOUT_CEO);
-  expect(resp.content).toContain(CEO_NAME);
+	const resp = await generateResponse("What’s the name of the CEO?");
+	expect(resp.retrievedChunks).toContain(CHUNK_ABOUT_CEO);
+	expect(resp.content).toContain(CEO_NAME);
 });
 ```
 
@@ -71,23 +71,23 @@ Then, you can move on to more sophisticated, end-to-end evals like:
 ```javascript
 // Semantic similarity eval
 test("factfulness eval", async () => {
-  const resp = await generateResponse("what’s our strategy?");
-  // Implementation of that is a task for the reader
-  expect(resp.content).toBeSemanticallySimilarTo(OUR_STRATEGY_PLAYBOOK);
+	const resp = await generateResponse("what’s our strategy?");
+	// Implementation of that is a task for the reader
+	expect(resp.content).toBeSemanticallySimilarTo(OUR_STRATEGY_PLAYBOOK);
 });
 
 // Grounding eval with other LLM as a judge
 test("grounding eval", async () => {
-  const question = "What’s the name of the CEO?";
-  const resp = await generateResponse(question);
-  // Implementation of that is a task for the reader
-  const isGrounded = await askLLM(
-    "Is the answer to the question based on the following set of data?",
-    question,
-    response.content,
-    response.retrievedChunks,
-  );
-  expect(isGrounded).toBeTrue();
+	const question = "What’s the name of the CEO?";
+	const resp = await generateResponse(question);
+	// Implementation of that is a task for the reader
+	const isGrounded = await askLLM(
+		"Is the answer to the question based on the following set of data?",
+		question,
+		response.content,
+		response.retrievedChunks,
+	);
+	expect(isGrounded).toBeTrue();
 });
 ```
 
@@ -162,13 +162,13 @@ call like:
 
 ```json
 {
-  "query": "docusigned by",
-  "order_by": "total_order_value",
-  "filter": {
-    "AND": [
-      { "col": "created_at", "operator": "gte", "value": "2023-06-01" },
-      { "col": "created_at", "operator": "lte", "value": "2023-09-01" }
-    ]
-  }
+	"query": "docusigned by",
+	"order_by": "total_order_value",
+	"filter": {
+		"AND": [
+			{ "col": "created_at", "operator": "gte", "value": "2023-06-01" },
+			{ "col": "created_at", "operator": "lte", "value": "2023-09-01" }
+		]
+	}
 }
 ```
