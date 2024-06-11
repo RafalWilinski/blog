@@ -2,7 +2,7 @@
 title: "Make your RAG Suck Less"
 description: "Common pitfalls in with designing and implementing RAGs"
 publishDate: "11 June 2024"
-tags: ["test"]
+tags: ["rag", "llm", "ai", "embeddings"]
 draft: false
 ---
 
