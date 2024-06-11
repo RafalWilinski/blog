@@ -1,6 +1,6 @@
 ---
 title: "Make your RAG Suck Less"
-description: "Common pitfalls in with designing and implementing RAGs and how to fix them"
+description: "Common pitfalls in designing and implementing RAGs and how to fix them"
 publishDate: "11 June 2024"
 tags: ["rag", "llm", "ai", "embeddings"]
 draft: false
