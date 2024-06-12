@@ -12,7 +12,7 @@ Before you go into fine-tuning & trying different models, ensure that you have e
 
 ### Understand your data
 
-If your data is going to be shitty, no model or fine tuning process will help you. Understand your
+Quality of your data is going to affect the quality of your AI product. If your data is going to be shitty, no model or fine tuning process will help you. Understand your
 data by going into the trenches. Open your database IDE or do a dump of your
 source material and chunks; you’ll be amazed at what you’re going to discover.
 Empty chunks, chunks made of just couple of letters, meaningless chunks made of only punctuation marks, dragons.
@@ -70,8 +70,8 @@ An embedding of this whole table would result in a vector has a very high noise-
 If you’ve implemented some of the advice I’ve already laid out here, how do you
 know you’re not making things even worse? Invest in a minimal set of evals - a
 systematic process of assessing the performance, accuracy, and effectiveness of
-your RAG. You can even start without adding more tooling to your setup. Leverage
-existing testing frameworks like Jest in the following way:
+your RAG. Start with simple unit test-like assertions, even without adding more tooling to your setup. Leverage
+existing testing frameworks like Jest/Vitest in the following way:
 
 ```javascript
 // Unit test-like eval
@@ -96,7 +96,7 @@ test("factfulness eval", async () => {
 And grounding based on the source material:
 
 ```javascript
-// Grounding eval with other LLM as a judge
+// Grounding eval with other LLM-as-a-judge
 test("grounding eval", async () => {
 	const question = "What’s the name of the CEO?";
 	const resp = await generateResponse(question);
@@ -110,8 +110,7 @@ test("grounding eval", async () => {
 });
 ```
 
-These are so-called "offline" evals. Ran in development/CI, mostly based on
-synthetic data, aka the questions you come up with. But reality has a surprising
+These are so-called "offline" evals. They should be ran in development/CI whenever you're making a change to your system or the prompts. But, reality has a surprising
 amount of detail. You’ll be amazed at what kind of questions your users are
 asking. That’s why you also need...
 
@@ -126,6 +125,10 @@ the answer grounded, is it related to our domain, is it following our brand’s
 intended tone, etc.
 
 There are really good existing solutions for that on the market including [Humanloop](https://humanloop.com) or [LangSmith](https://langsmith.com). They will help you not only in monitoring the performance of your RAG but also in building the datasets for the offline evals.
+
+### Human-in-the-loop
+
+All evals created up to this point are put in place by you and your presumptions. Feedback provided by your users can be also lazy and lacking. If the system you're creating isn't connected to your domain, you might not be able to provide the right answers. LLM-as-a-judge can be also imperfect and lacking nessesary context. To fix that, request or allocate a human with related domain knowledge to constantly review the AI’s answers and provide feedback. Aforementioned systems empower you in doing that and building the datasets based on that feedback.
 
 ## Generating answers
 
@@ -198,7 +201,7 @@ call like:
 
 ### Hybrid Search
 
-If the data/system you're building on top of already has a full text search capability (e.g. in Postgres `WHERE to_tsvector(text) @@ to_tsquery('some query');`), you can also use that to improve the results. Perform searches both in the vector store and in the full text search engine in parallel and merge them afterwards. This will give you a better chance to find relevant results and will also help you to avoid the "no results" problem.
+If the data/system you're building on top of already has a full text search capability (e.g. in Postgres `WHERE to_tsvector(text) @@ to_tsquery('some query');`), you can also use that to improve the results. Perform searches both in the vector store and in the full text search engine in parallel and merge them afterwards. While full text search will give you coverage in the most obvious cases, vector store will take care of synonyms and other details that are hard to capture in the text search.
 
 ### Include Metadata
 
