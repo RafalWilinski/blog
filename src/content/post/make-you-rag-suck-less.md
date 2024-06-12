@@ -6,6 +6,8 @@ tags: ["rag", "llm", "ai", "embeddings"]
 draft: false
 ---
 
+With the recent explosion in LLM Large-language models (LLM) adoption, many implementations are falling short. This article tackles common issues and offers practical tips to improve Retrieval-Augmented Generation (RAG) systems, ensuring they perform better and deliver more accurate results.
+
 ## Embeddings Generation
 
 Before you go into fine-tuning & trying different models, ensure that you have explored and addressed the low-hanging fruits.
@@ -128,7 +130,7 @@ There are really good existing solutions for that on the market including [Human
 
 ### Human-in-the-loop
 
-All evals created up to this point are put in place by you and your presumptions. Feedback provided by your users can be also lazy and lacking. If the system you're creating isn't connected to your domain, you might not be able to provide the right answers. LLM-as-a-judge can be also imperfect and lacking nessesary context. To fix that, request or allocate a human with related domain knowledge to constantly review the AI’s answers and provide feedback. Aforementioned systems empower you in doing that and building the datasets based on that feedback.
+All evals created up to this point are put in place by you and your presumptions. Feedback provided by your users can be also lazy, noisy and lacking. If the system you're creating isn't connected to your domain, you might not be able to provide the right answers. LLM-as-a-judge can be also imperfect and lacking nessesary context. To fix that, request or allocate a human with related domain knowledge to constantly review the AI’s answers and provide feedback. Human oversight can provide critical corrections and insights, especially in complex or ambiguous cases. For instance, in medical AI applications, experts can review and refine model suggestions, ensuring higher accuracy and trustworthiness. This collaborative approach enhances overall performance
 
 ## Generating answers
 
@@ -146,9 +148,9 @@ While this is perfectly fine for flat, contextless, equal documents, it might
 not be the best thing for your use case. Chances are that there are factors more
 important than just semantic similarities:
 
-- freshness of the data (time decay
-  factor)
-- total contract value of the document
+- recency of the data
+- user feedback
+- total contract value
 - popularity of an artist or document
 
 _etc._
@@ -179,8 +181,7 @@ This query will not only rank the documents by their semantic similarity but als
 When designing the function/tool to query the vector store, allow the agent to also
 supply more parameters than just the search query.
 
-Why? Querying just based term
-isn’t going to give you desired results, for instance "biggest contracts
+Why? Querying just based term isn’t going to give you desired results, for instance "biggest contracts
 docusigned in Q3 2023 bigger than $75k" is likely going to fail to bring up the
 relevant results. Put the agent in charge of sorting and allow the LLM to supply
 custom filtering statements so the mentioned query will be transformed to a tool
@@ -201,14 +202,11 @@ call like:
 
 ### Hybrid Search
 
-If the data/system you're building on top of already has a full text search capability (e.g. in Postgres `WHERE to_tsvector(text) @@ to_tsquery('some query');`), you can also use that to improve the results. Perform searches both in the vector store and in the full text search engine in parallel and merge them afterwards. While full text search will give you coverage in the most obvious cases, vector store will take care of synonyms and other details that are hard to capture in the text search.
+If the data/system you're building on top of already has a full text search capability (e.g. in Postgres `WHERE to_tsvector(text) @@ to_tsquery('some query');`), you can also use that to improve the results. Perform searches both in the vector store and in the full text search engine in parallel and combine them afterwards. This approach leverages the strengths of both methods, ensuring comprehensive and precise results - while full text search will give you coverage in the most obvious cases, vector store will take care of synonyms and other details that are hard to capture in the text search.
 
 ### Include Metadata
 
-Another pitfall I often see is not injecting metadata alongside the chunk’s
-text. Things like parent document text, its creation date, link, or author name can
-enrich the AI answers to be more relevant and point the user to the source
-material.
+Another pitfall I often see is not injecting metadata alongside the chunk’s text. Things like parent document text, its creation date, link, or author name can enrich the AI answers to be more relevant and point the user to the source material.
 
 ## UX
 
@@ -217,5 +215,4 @@ blank screen wondering, "Is this thing even working?". Amazon found that
 [every 100ms of latency cost them 1% in sales](https://www.digitalrealty.com/resources/articles/the-cost-of-latency).
 Forcing your users to wait will cause a massive churn.
 
-Stream not just responses but
-also tool calls and responses from them. Since RAG stands for "Retrieval Augmented Generation", it's important to show the used documents to synthesize the responses or links to the source material. It will even help you understand the reasoning behind the answers and identify blind spots in your data.
+Stream not just responses but also tool calls and responses from them. Since RAG stands for "Retrieval Augmented Generation", it's important to show the used documents to synthesize the responses or links to the source material. It will even help you understand the reasoning behind the answers and identify blind spots in your data.
