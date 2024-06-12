@@ -34,11 +34,10 @@ But how? If you’re dealing with classical text data like OCRed PDFs, try
 [recursive chunking with overlaps](https://python.langchain.com/v0.1/docs/modules/data_connection/document_transformers/recursive_text_splitter/). It’s better than the most naive fixed-size chunking but with
 respect for the document's structure.
 
-If your source is a bit richer, you can
-use a document format-specific chunker. For example, for Markdown, you can use
-[MarkdownTextSplitter](https://python.langchain.com/v0.1/docs/modules/data_connection/document_transformers/markdown_header_metadata/).
-Even if you dislike Langchain (like I do), you can still import some of their
+If your source is a bit richer, you can use a document format-specific chunker. For example, for Markdown, you can use [MarkdownTextSplitter](https://python.langchain.com/v0.1/docs/modules/data_connection/document_transformers/markdown_header_metadata/). Even if you dislike Langchain (like I do), you can still import some of their
 [utility functions](https://python.langchain.com/v0.1/docs/modules/data_connection/document_transformers/); they can be really helpful.
+
+Semantic chunking and agentic chunking are more advanced topics, learn more about them in the great [5 Levels Of Text Splitting](https://github.com/FullStackRetrieval-com/RetrievalTutorials/blob/main/tutorials/LevelsOfTextSplitting/5_Levels_Of_Text_Splitting.ipynb) by [Greg Kamradt](https://x.com/GregKamradt)
 
 ### Mix small and large chunks
 
@@ -63,7 +62,22 @@ I think the best example is pricing information. Consider following source data:
 | Enterprise | $249.99                  | $2,499.99               | 201-500       | 1TB          | 200,000/month | Dedicated Account Manager | $0.04/extra GB, $0.02/additional AR, $39.99 per user above UC | 25% off ASF for first 6 months |
 ```
 
-An embedding of this whole table would result in a vector has a very high noise-to-signal ratio because it has a lot of information. Instead of using the table contents as an input to the embedding model, you can use the summary of it instead like "pricing table for plans Basic, Standard, and Enterprise".
+An embedding of this whole table would result in a vector has a very high noise-to-signal ratio because it has a lot of information. Instead of using the table contents as an input to the embedding function, you can use the summary of it instead. Something like: "pricing table for plans Basic, Standard, and Enterprise".
+
+In code, it would look like this:
+
+```typescript
+const table = `| Plan       | Monthly Subscription Fee  ... <rest of the table> ...`;
+const summary = "pricing table for plans Basic, Standard, and Enterprise";
+const embedding = await openai.embeddings.create({
+	model: "text-embedding-ada-002",
+	input: summary,
+});
+await embeddingsTable.addRow({
+	embedding: embedding.data[0].embedding,
+	text: table,
+});
+```
 
 ## Evals
 
@@ -206,7 +220,7 @@ If the data/system you're building on top of already has a full text search capa
 
 ### Include Metadata
 
-Another pitfall I often see is not injecting metadata alongside the chunk’s text. Things like parent document text, its creation date, link, or author name can enrich the AI answers to be more relevant and point the user to the source material.
+Another pitfall I often see is not injecting metadata alongside the chunk’s text. Things like parent document text, its creation date, link, or author name can enrich the AI answers to be more relevant and point the user to the source material. For example, in a legal document retrieval system, metadata like case number, court, and jurisdiction can be crucial.
 
 ## UX
 
