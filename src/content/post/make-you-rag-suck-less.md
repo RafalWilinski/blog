@@ -4,6 +4,7 @@ description: "Common pitfalls in designing and implementing RAGs and how to fix 
 publishDate: "11 June 2024"
 tags: ["rag", "llm", "ai", "embeddings"]
 draft: false
+image: https://rwilinski.ai/og-image/make-you-rag-suck-less.png
 ---
 
 With the recent explosion in LLM Large-language models (LLM) adoption, many implementations are falling short. This article tackles common issues and offers practical tips to improve Retrieval-Augmented Generation (RAG) systems, ensuring they perform better and deliver more accurate results.

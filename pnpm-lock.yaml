@@ -17,9 +17,6 @@ dependencies:
   '@astrojs/tailwind':
     specifier: 5.1.0
     version: 5.1.0(astro@4.5.16)(tailwindcss@3.4.3)
-  '@cloudflare/pages-plugin-vercel-og':
-    specifier: ^0.1.2
-    version: 0.1.2
   astro:
     specifier: 4.5.16
     version: 4.5.16(typescript@5.4.4)
@@ -573,10 +570,6 @@ packages:
       '@babel/helper-string-parser': 7.24.1
       '@babel/helper-validator-identifier': 7.22.20
       to-fast-properties: 2.0.0
-    dev: false
-
-  /@cloudflare/pages-plugin-vercel-og@0.1.2:
-    resolution: {integrity: sha512-aWA2pHu1R2UbOJIcSASCuViyYVEhYkZ3tWTrTnr+yLosBfksOzjecHQkCkPv/jy75hGPrn1BbtsQR+oWVFkp1g==}
     dev: false
 
   /@ctrl/tinycolor@3.6.1:
