@@ -1,7 +1,7 @@
 {
-	"name": "Astro Theme Cactus Demo",
-	"short_name": "Astro_Cactus",
-	"description": "Starter blog site for Astro",
+	"name": "Rafal's AI Blog",
+	"short_name": "rwilinski.ai",
+	"description": "Blog about applied AI, LLMs, RAGs and agents",
 	"icons": [
 		{
 			"src": "/192x192.png",
