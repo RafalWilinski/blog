@@ -25,7 +25,7 @@ export const siteConfig: SiteConfig = {
 	title: "rwilinski.me",
 	webmentions: {
 		// Webmention.io API endpoint. Get your own here: https://webmention.io/, and follow this blog post: https://astro-cactus.chriswilliams.dev/posts/webmentions/
-		link: "https://webmention.io/api/mentions.html?token=6vzaZhDxTkK_mBfBHgxxgw",
+		link: "https://webmention.io/rwilinski.ai/webmention",
 	},
 };
 
