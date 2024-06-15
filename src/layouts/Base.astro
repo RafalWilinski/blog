@@ -1,5 +1,6 @@
 ---
 import type { SiteMeta } from "@/types";
+import { ViewTransitions } from "astro:transitions";
 
 import BaseHead from "@/components/BaseHead.astro";
 import SkipLink from "@/components/SkipLink.astro";
@@ -20,6 +21,7 @@ const {
 <html lang={siteConfig.lang}>
 	<head>
 		<BaseHead articleDate={articleDate} description={description} ogImage={ogImage} title={title} />
+		<ViewTransitions />
 	</head>
 	<body>
 		<ThemeProvider />
