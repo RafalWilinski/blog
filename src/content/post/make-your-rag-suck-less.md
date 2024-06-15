@@ -99,7 +99,7 @@ test("is giving correct answer", async () => {
 });
 ```
 
-Then, you can move on to more sophisticated, end-to-end evals like factfulness:
+// Then, you can move on to more sophisticated, end-to-end evals like factfulness:
 
 ```javascript
 // Semantic similarity eval
@@ -110,7 +110,7 @@ test("factfulness eval", async () => {
 });
 ```
 
-And grounding based on the source material:
+// And grounding based on the source material:
 
 ```javascript
 // Grounding eval with other LLM-as-a-judge
@@ -226,8 +226,7 @@ Another pitfall I often see is not injecting metadata alongside the chunk's text
 ## UX
 
 Use streaming. Tell the user what's happening. It's much better than staring for 30 seconds at a
-blank screen wondering, "Is this thing even working?". Amazon found that
-[every 100ms of latency cost them 1% in sales](https://www.digitalrealty.com/resources/articles/the-cost-of-latency).
-Forcing your users to wait will cause massive churn.
+blank screen wondering, "Is this thing even working?". If Amazon found that
+[every 100ms of latency cost them 1% in sales](https://www.digitalrealty.com/resources/articles/the-cost-of-latency). then forcing your users to wait over 10 seconds for something to show up will cause massive churn for sure.
 
 Stream not just responses but also tool calls and responses from them. Since RAG stands for "Retrieval Augmented Generation", it's important to show the documents used to synthesize the responses or links to the source material. It will even help you understand the reasoning behind the answers and identify blind spots in your data.
