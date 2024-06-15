@@ -1,10 +1,8 @@
-import type { APIContext, InferGetStaticPropsType } from "astro";
+import type { APIContext } from "astro";
 
 import RobotoMonoBold from "@/assets/roboto-mono-700.ttf";
 import RobotoMono from "@/assets/roboto-mono-regular.ttf";
-import { getAllPosts } from "@/data/post";
 import { siteConfig } from "@/site-config";
-import { getFormattedDate } from "@/utils";
 import { Resvg } from "@resvg/resvg-js";
 import satori, { type SatoriOptions } from "satori";
 import { html } from "satori-html";
@@ -29,11 +27,10 @@ const ogOptions: SatoriOptions = {
 	width: 1200,
 };
 
-const markup = (title: string, pubDate: string) =>
+const markup = (title: string) =>
 	html`<div tw="flex flex-col w-full h-full bg-[#1d1f21] text-[#c9cacc]">
 		<div tw="flex flex-col flex-1 w-full p-10 justify-center">
-			<p tw="text-2xl mb-6">${pubDate}</p>
-			<h1 tw="text-7xl font-bold leading-snug text-white">${title}</h1>
+			<h1 tw="text-6xl font-bold leading-snug text-white">${title}</h1>
 		</div>
 		<div tw="flex items-center justify-between w-full p-10 border-t border-[#2bbc89] text-xl">
 			<div tw="flex items-center">
@@ -43,18 +40,10 @@ const markup = (title: string, pubDate: string) =>
 		</div>
 	</div>`;
 
-type Props = InferGetStaticPropsType<typeof getStaticPaths>;
-
 export async function GET(context: APIContext) {
-	const { pubDate, skipDate, title } = context.props as Props;
+	console.log(context.request.url);
 
-	const postDate = skipDate
-		? ""
-		: `//${getFormattedDate(pubDate, {
-				month: "long",
-				weekday: "long",
-			})}`;
-	const svg = await satori(markup(title, postDate), ogOptions);
+	const svg = await satori(markup("LLMs, RAGs, Agents and Applied AI"), ogOptions);
 	const png = new Resvg(svg).render().asPng();
 	return new Response(png, {
 		headers: {
@@ -62,30 +51,4 @@ export async function GET(context: APIContext) {
 			"Content-Type": "image/png",
 		},
 	});
-}
-
-export async function getStaticPaths() {
-	const posts = await getAllPosts();
-	return [
-		...posts,
-		{
-			data: {
-				includeDate: false,
-				ogImage: false,
-				publishDate: new Date(2020, 1, 1),
-				title: "LLMs, RAGs, Agents and Applied AI",
-				updatedDate: new Date(),
-			},
-			slug: "index",
-		},
-	]
-		.filter(({ data }) => !data.ogImage)
-		.map((post) => ({
-			params: { slug: post.slug },
-			props: {
-				pubDate: post.data.updatedDate ?? post.data.publishDate,
-				skipDate: !post.slug.startsWith("/content"),
-				title: post.data.title,
-			},
-		}));
 }
