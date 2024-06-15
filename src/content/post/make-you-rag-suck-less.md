@@ -147,7 +147,7 @@ There are really good existing solutions for that on the market including [Human
 
 All evals created up to this point are put in place by you and your presumptions. Feedback provided by your users can also be lazy, noisy, and lacking. If the system you're creating isn't connected to your domain, you might not be able to provide the right answers. LLM-as-a-judge can also be imperfect and lacking necessary context. To fix that, request or allocate a human with related domain knowledge to constantly review the AI's answers and provide feedback. Human oversight can provide critical corrections and insights, especially in complex or ambiguous cases. For instance, in medical AI applications, experts can review and refine model suggestions, ensuring higher accuracy and trustworthiness. This collaborative approach enhances overall performance.
 
-## Generating Answers
+## Retrieval
 
 Very often the accuracy of answers can be improved just by raising the `topK` value of the fetched chunks from the vector store. But that's not always enough.
 
