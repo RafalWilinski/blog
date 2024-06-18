@@ -82,18 +82,17 @@ await embeddingsTable.addRow({
 
 ## Evals
 
+If you've implemented some of the advice I've already laid out here, how do you know you're not making things even worse? Invest in a minimal set of evals - a systematic process of assessing the performance, accuracy, and effectiveness of your RAG.
+
 ### Offline
 
-If you've implemented some of the advice I've already laid out here, how do you
-know you're not making things even worse? Invest in a minimal set of evals - a
-systematic process of assessing the performance, accuracy, and effectiveness of
-your RAG. Start with simple unit test-like assertions, even without adding more tooling to your setup. Leverage
-existing testing frameworks like Jest/Vitest in the following way:
+Start with simple unit test-like assertions, even without adding more tooling to your setup. Leverage existing testing frameworks like Jest/Vitest in the following way:
 
 ```javascript
 // Unit test-like eval
 test("is giving correct answer", async () => {
 	const resp = await generateResponse("What's the name of the CEO?");
+	// aka "context recall"
 	expect(resp.retrievedChunks).toContain(CHUNK_ABOUT_CEO);
 	expect(resp.content).toContain(CEO_NAME);
 });
@@ -102,8 +101,8 @@ test("is giving correct answer", async () => {
 // Then, you can move on to more sophisticated, end-to-end evals like factfulness:
 
 ```javascript
-// Semantic similarity eval
-test("factfulness eval", async () => {
+// Semantic similarity E2E eval
+test("correctness", async () => {
 	const resp = await generateResponse("what's our strategy?");
 	// Implementation of that is a task for the reader
 	expect(resp.content).toBeSemanticallySimilarTo(OUR_STRATEGY_PLAYBOOK);
@@ -113,7 +112,7 @@ test("factfulness eval", async () => {
 // And grounding based on the source material:
 
 ```javascript
-// Grounding eval with other LLM-as-a-judge
+// Faithfulness measured using LLM-as-a-judge
 test("grounding eval", async () => {
 	const question = "What's the name of the CEO?";
 	const resp = await generateResponse(question);
@@ -127,19 +126,15 @@ test("grounding eval", async () => {
 });
 ```
 
-These are so-called "offline" evals. They should be run in development/CI whenever you're making a change to your system or the prompts. But, reality has a surprising
-amount of detail. You'll be amazed at what kind of questions your users are
-asking. That's why you also need...
+Once your test set grows and you move to more sophisticated evals like precision (if ground-truth relevant items are present and ranked high), recall (how many of the sentences are based on the context), correctness & relevancy (number of sentences in the context relevant to the question), consider using dedicated framework like [Ragas](https://docs.ragas.io) or [autoevals](https://github.com/braintrustdata/autoevals).
+
+These are so-called "offline" evals. They should be run in development/CI whenever you're making a change to your system or the prompts. But, reality has a surprising amount of detail. You'll be amazed at what kind of questions your users are asking. That's why you also need...
 
 ### Monitoring & Online Evals
 
-What gets measured gets improved. Gather questions, use cases, and feedback to
-AI-generated responses. It will help you understand the blind spots you
-initially had when imagining the use cases and designing the RAG and its tools.
+What gets measured gets improved. Gather questions, use cases, and feedback to AI-generated responses. It will help you understand the blind spots you initially had when imagining the use cases and designing the RAG and its tools.
 
-Moreover, constantly evaluate each AI's answer against the same set of evals. Is
-the answer grounded, is it related to our domain, is it following our brand's
-intended tone, etc.
+Moreover, constantly evaluate each AI's answer against the same set of evals. Is the answer grounded, is it related to our domain, is it following our brand's intended tone, etc.
 
 There are really good existing solutions for that on the market including [Humanloop](https://humanloop.com) or [LangSmith](https://langsmith.com). They will help you not only in monitoring the performance of your RAG but also in building the datasets for the offline evals.
 
