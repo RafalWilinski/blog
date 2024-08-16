@@ -1,0 +1,155 @@
+---
+title: Benchmarking LLM for Structured JSON Generation - A Comprehensive Analysis (Aug 2024)
+description: A comprehensive analysis of LLM configurations for JSON generation, focusing on their performance across different schema complexities.
+publishDate: "16 August 2024"
+tags: ["llm", "ai", "json"]
+draft: true
+---
+
+In this post, we dive deep into a comprehensive benchmark of OpenAI models configurations for JSON generation, analyzing their performance across different schema complexities.
+
+## Experiment Setup
+
+We tested six LLM configurations across three JSON schema generation methods:
+
+1. gpt-4o-mini generating JSONs using Tool Calls
+2. gpt-4o-mini generating JSONs using JSON mode
+3. gpt-4o-2024-08-06 generating JSONs using Tool Calls
+4. gpt-4o-2024-08-06 generating JSONs using JSON mode
+5. gpt-4o-2024-08-06 generating JSONs using JSON mode using strict mode
+6. gpt-4o-mini generating JSONs using JSON mode using strict mode
+
+And three JSON schema complexities:
+
+1. **Wide JSON**: 25 fields with 1 level of nesting
+2. **Complex JSON**: 25 fields with 5 levels of nesting
+3. **Super Complex JSON**: 100 fields with 5 levels of nesting
+
+Each configuration was tested 50 times and the average time taken was recorded.
+
+Full code used to run the experiment can be found in the [GitHub repo](https://github.com/RafalWilinski/llm-benchmarking-structured-generation).
+
+And the full results can be found [here](https://gist.github.com/RafalWilinski/a324ffdb6bac48287609d118c1bf54d1)
+
+## Results
+
+## Complex JSON Schema
+
+| Method                            | Avg Time (ms) | Time Diff (ms) | Success Rate | Cost   | Cost Diff |
+| --------------------------------- | ------------- | -------------- | ------------ | ------ | --------- |
+| gpt-4o-2024-08-06-non-strict-tool | 4079.0854     | 0              | 100.0000%    | 0.1680 | +0.1534   |
+| gpt-4o-mini-non-strict-json       | 5847.6183     | +1768.5329     | 100.0000%    | 0.0175 | +0.0029   |
+| gpt-4o-2024-08-06-strict-json     | 5866.2200     | +1787.1346     | 100.0000%    | 0.1528 | +0.1382   |
+| gpt-4o-2024-08-06-non-strict-json | 6314.3933     | +2235.3079     | 100.0000%    | 0.3026 | +0.2880   |
+| gpt-4o-mini-strict-json           | 7858.5114     | +3779.4260     | 100.0000%    | 0.0146 | 0         |
+| gpt-4o-mini-non-strict-tool       | N/A           | N/A            | 0.0000%      | N/A    | N/A       |
+
+## Wide JSON Schema
+
+| Method                            | Avg Time (ms) | Time Diff (ms) | Success Rate | Cost   | Cost Diff |
+| --------------------------------- | ------------- | -------------- | ------------ | ------ | --------- |
+| gpt-4o-mini-non-strict-tool       | 2943.3405     | 0              | 100.0000%    | 0.0078 | +0.0018   |
+| gpt-4o-2024-08-06-non-strict-tool | 3149.5288     | +206.1883      | 100.0000%    | 0.1313 | +0.1253   |
+| gpt-4o-mini-non-strict-json       | 3603.0182     | +659.6777      | 100.0000%    | 0.0115 | +0.0055   |
+| gpt-4o-2024-08-06-strict-json     | 3852.8140     | +909.4735      | 100.0000%    | 0.1023 | +0.0963   |
+| gpt-4o-2024-08-06-non-strict-json | 4065.5266     | +1122.1861     | 100.0000%    | 0.1964 | +0.1904   |
+| gpt-4o-mini-strict-json           | 4530.8732     | +1587.5327     | 100.0000%    | 0.0060 | 0         |
+
+## Super Complex JSON Schema
+
+| Method                            | Avg Time (ms) | Time Diff (ms) | Success Rate | Cost   | Cost Diff |
+| --------------------------------- | ------------- | -------------- | ------------ | ------ | --------- |
+| gpt-4o-2024-08-06-strict-json     | 10743.0250    | 0              | 100.0000%    | 0.3004 | +0.2763   |
+| gpt-4o-mini-non-strict-json       | 12884.3888    | +2141.3638     | 100.0000%    | 0.0393 | +0.0152   |
+| gpt-4o-2024-08-06-non-strict-json | 13041.2693    | +2298.2443     | 100.0000%    | 0.6619 | +0.6378   |
+| gpt-4o-mini-strict-json           | 13289.3869    | +2546.3619     | 100.0000%    | 0.0241 | 0         |
+| gpt-4o-2024-08-06-non-strict-tool | N/A           | N/A            | 0.0000%      | N/A    | N/A       |
+| gpt-4o-mini-non-strict-tool       | N/A           | N/A            | 0.0000%      | N/A    | N/A       |
+
+## Key Findings
+
+### Strict vs Non-Strict: A Performance Showdown
+
+Our benchmark revealed interesting insights into the performance differences between strict and non-strict modes across various JSON complexities:
+
+#### Wide JSON Schema
+
+In the simplest scenario, non-strict modes generally outperformed their strict counterparts:
+
+- The fastest performer was `gpt-4o-mini` with tool calls (2943.3405 ms)
+- `gpt-4o-mini` in Strict Mode was significantly slower (4530.8732 ms)
+- `gpt-4o-2024-08-06` in Strict Mode (3852.8140 ms) was outpaced by its non-strict counterparts (3149.5288 ms with tool calls, 4065.5266 ms for JSON generation)
+
+However, all configurations achieved a 100% success rate, **indicating that strictness might be overkill for simple structures.**
+
+#### Complex JSON Schema
+
+As complexity increased, the performance gap narrowed:
+
+- gpt-4o-2024-08-06 with tool calls led (4079.0854 ms)
+- gpt-4o-2024-08-06 in Strict Mode followed closely (5866.2200 ms)
+- Notably, gpt-4o-mini with tool calls failed completely, while its strict counterpart succeeded
+
+This suggests that strictness becomes more valuable as JSON complexity increases, especially for less advanced models.
+
+#### Super Complex JSON Schema
+
+In the most challenging scenario, strict modes shined:
+
+- gpt-4o-2024-08-06 in Strict Mode was the top performer (10743.0250 ms)
+- Both non-strict tool methods failed entirely
+- Strict JSON methods maintained 100% success rates
+
+This underscores the critical importance of strictness in handling highly complex JSON structures.
+
+### The Cold Start in Strict Mode
+
+Using strict mode bears a significant cold start penalty which goes away in the subsequent runs.
+
+| JSON Schema   | Model                    | Cold Start Penalty |
+| ------------- | ------------------------ | ------------------ |
+| Wide          | gpt-4o-2024-08-06 Strict | 374.4961%          |
+| Complex       | gpt-4o-2024-08-06 Strict | 261.8959%          |
+| Super Complex | gpt-4o-2024-08-06 Strict | 507.6241%          |
+| Super Complex | gpt-4o-mini Strict       | 371.1655%          |
+
+### Strictness and Cost: An Unexpected Relationship
+
+Interestingly, the impact of strictness on cost varied between model versions:
+
+- For the mini model, strict mode was generally cheaper (e.g., $0.0060 vs $0.0115 for Wide JSON)
+- For the 2024-08-06 model, strict mode was more expensive in simpler scenarios but became cost-effective in the most complex case ($0.3004 vs $0.6619 for Super Complex JSON)
+
+This suggests that the relationship between strictness and cost is not straightforward and depends on both the model version and the complexity of the task.
+
+## Practical Recommendations
+
+Based on our findings, we recommend the following approaches:
+
+1. **For Simple JSON Structures**:
+
+   - Prefer non-strict modes, especially tool-based methods for speed and cost-effectiveness
+   - Be aware of the significant cold start penalty if using strict mode
+
+2. **For Moderately Complex JSON**:
+
+   - Use non-strict modes with more advanced models (e.g., gpt-4o-2024-08-06 with tool calls)
+   - If using less advanced models, strict mode becomes necessary for reliability
+   - Consider the trade-off between reliability and cold start time in strict mode
+
+3. **For Highly Complex JSON**:
+
+   - Strict modes are essential for reliability and success
+   - Use the most advanced model available (e.g., gpt-4o-2024-08-06 in Strict Mode)
+   - Be prepared for very significant cold start penalties
+   - Implement strategies to mitigate cold start impacts (e.g., keep-warm functions)
+
+4. **Cost Considerations**:
+
+   - For simpler tasks, non-strict modes are generally more cost-effective
+   - For complex tasks, strict modes can be more cost-effective, especially with advanced models
+
+5. **Cold Start Scenarios**:
+   - If your application involves frequent cold starts and uses strict mode, implement robust strategies to mitigate the impact
+   - Consider using non-strict modes for less complex tasks to avoid severe cold start penalties
+   - For mission-critical applications requiring strict mode, consider keeping the model "warm" to avoid frequent cold starts
