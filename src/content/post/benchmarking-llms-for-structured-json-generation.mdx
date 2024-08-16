@@ -281,18 +281,22 @@ This underscores the critical importance of strictness in handling highly comple
 
 ### The Cold Start in Strict Mode
 
-As Ted Sanders mentioned in [this HN comment](https://news.ycombinator.com/item?id=41174306), using strict mode bears a significant cold start penalty which goes away in the subsequent runs.
+As [Ted Sanders](https://x.com/sandersted) mentioned in [this HN comment](https://news.ycombinator.com/item?id=41174306), using strict mode bears a significant cold start penalty which goes away in the subsequent runs.
 
 > The first request with each JSON schema will be slow, as we need to preprocess the JSON schema into a context-free grammar. If you don't want that latency hit (e.g., you're prototyping, or have a use case that uses variable one-off schemas), then you might prefer "strict": false
 
 How much slower it is? Here are my results:
 
-| JSON Schema   | Model                    | Cold Start Penalty |
-| ------------- | ------------------------ | ------------------ |
-| Wide          | gpt-4o-2024-08-06 Strict | 374.4961%          |
-| Complex       | gpt-4o-2024-08-06 Strict | 261.8959%          |
-| Super Complex | gpt-4o-2024-08-06 Strict | 507.6241%          |
-| Super Complex | gpt-4o-mini Strict       | 371.1655%          |
+| Model             | schema                    | avgFirstRequestTime | avgSecondRequestTime | coldStartPenalty |
+| ----------------- | ------------------------- | ------------------- | -------------------- | ---------------- |
+| gpt-4o-2024-08-06 | Wide JSON Schema          | 20234.0549          | 5927.3556            | 241.37%          |
+| gpt-4o-mini       | Wide JSON Schema          | 21801.5501          | 5800.8192            | 275.84%          |
+| gpt-4o-2024-08-06 | Complex JSON Schema       | 24089.9075          | 7100.4283            | 239.27%          |
+| gpt-4o-mini       | Complex JSON Schema       | 26665.4039          | 10270.7880           | 159.62%          |
+| gpt-4o-2024-08-06 | Super Complex JSON Schema | 60481.4465          | 11698.9430           | 416.98%          |
+| gpt-4o-mini       | Super Complex JSON Schema | 66011.3763          | 13994.1616           | 371.71%          |
+
+The more complex the JSON schema, the more painful the cold start penalty becomes.
 
 ### Strictness and Cost: An Unexpected Relationship
 
