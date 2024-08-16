@@ -1,23 +1,26 @@
 ---
-title: Benchmarking LLM for Structured JSON Generation - A Comprehensive Analysis (Aug 2024)
+title: Benchmarking LLMs for JSON Generation w/ and w/o Strict Mode
 description: A comprehensive analysis of LLM configurations for JSON generation, focusing on their performance across different schema complexities.
 publishDate: "16 August 2024"
 tags: ["llm", "ai", "json"]
-draft: true
 ---
+
+import LLMJSONCharts from "@/components/LLMJSONCharts";
 
 In this post, we dive deep into a comprehensive benchmark of OpenAI models configurations for JSON generation, analyzing their performance across different schema complexities.
 
 ## Experiment Setup
 
+Task: Generate a JSON object adhering to the schema provided.
+
 We tested six LLM configurations across three JSON schema generation methods:
 
-1. gpt-4o-mini generating JSONs using Tool Calls
-2. gpt-4o-mini generating JSONs using JSON mode
-3. gpt-4o-2024-08-06 generating JSONs using Tool Calls
-4. gpt-4o-2024-08-06 generating JSONs using JSON mode
-5. gpt-4o-2024-08-06 generating JSONs using JSON mode using strict mode
-6. gpt-4o-mini generating JSONs using JSON mode using strict mode
+1. `gpt-4o-mini` generating JSONs using Tool Calls
+2. `gpt-4o-mini` generating JSONs using JSON mode
+3. `gpt-4o-mini` generating JSONs using JSON mode using `strict = True`
+4. `gpt-4o-2024-08-06` generating JSONs using Tool Calls
+5. `gpt-4o-2024-08-06` generating JSONs using JSON mode
+6. `gpt-4o-2024-08-06` generating JSONs using JSON mode using `strict = True`
 
 And three JSON schema complexities:
 
@@ -34,6 +37,8 @@ And the full results can be found [here](https://gist.github.com/RafalWilinski/a
 ## Results
 
 ## Complex JSON Schema
+
+<LLMJSONCharts client:visible />
 
 | Method                            | Avg Time (ms) | Time Diff (ms) | Success Rate | Cost   | Cost Diff |
 | --------------------------------- | ------------- | -------------- | ------------ | ------ | --------- |
@@ -86,9 +91,9 @@ However, all configurations achieved a 100% success rate, **indicating that stri
 
 As complexity increased, the performance gap narrowed:
 
-- gpt-4o-2024-08-06 with tool calls led (4079.0854 ms)
-- gpt-4o-2024-08-06 in Strict Mode followed closely (5866.2200 ms)
-- Notably, gpt-4o-mini with tool calls failed completely, while its strict counterpart succeeded
+- `gpt-4o-2024-08-06` with tool calls led (4079.0854 ms)
+- `gpt-4o-2024-08-06` in Strict Mode followed closely (5866.2200 ms)
+- Notably, `gpt-4o-mini` with tool calls failed completely, while its strict counterpart succeeded
 
 This suggests that strictness becomes more valuable as JSON complexity increases, especially for less advanced models.
 
@@ -96,7 +101,7 @@ This suggests that strictness becomes more valuable as JSON complexity increases
 
 In the most challenging scenario, strict modes shined:
 
-- gpt-4o-2024-08-06 in Strict Mode was the top performer (10743.0250 ms)
+- `gpt-4o-2024-08-06` in Strict Mode was the top performer (10743.0250 ms)
 - Both non-strict tool methods failed entirely
 - Strict JSON methods maintained 100% success rates
 
@@ -117,8 +122,8 @@ Using strict mode bears a significant cold start penalty which goes away in the 
 
 Interestingly, the impact of strictness on cost varied between model versions:
 
-- For the mini model, strict mode was generally cheaper (e.g., $0.0060 vs $0.0115 for Wide JSON)
-- For the 2024-08-06 model, strict mode was more expensive in simpler scenarios but became cost-effective in the most complex case ($0.3004 vs $0.6619 for Super Complex JSON)
+- For the `gpt-4o-mini` model, strict mode was generally cheaper (e.g., $0.0060 vs $0.0115 for Wide JSON)
+- For the `2024-08-06` model, strict mode was more expensive in simpler scenarios but became cost-effective in the most complex case ($0.3004 vs $0.6619 for Super Complex JSON)
 
 This suggests that the relationship between strictness and cost is not straightforward and depends on both the model version and the complexity of the task.
 
@@ -140,9 +145,8 @@ Based on our findings, we recommend the following approaches:
 3. **For Highly Complex JSON**:
 
    - Strict modes are essential for reliability and success
-   - Use the most advanced model available (e.g., gpt-4o-2024-08-06 in Strict Mode)
+   - Use the most advanced model available (e.g., `gpt-4o-2024-08-06` in Strict Mode)
    - Be prepared for very significant cold start penalties
-   - Implement strategies to mitigate cold start impacts (e.g., keep-warm functions)
 
 4. **Cost Considerations**:
 
