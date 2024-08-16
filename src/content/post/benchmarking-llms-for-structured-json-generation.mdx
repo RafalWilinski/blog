@@ -1,19 +1,23 @@
 ---
-title: Benchmarking LLMs for JSON Generation w/ and w/o Strict Mode
-description: A comprehensive analysis of LLM configurations for JSON generation, focusing on their performance across different schema complexities.
+title: Benchmarking OpenAI LLMs for JSON Generation
+description: A quick experiment to benchmark OpenAI LLMs for JSON generation and analyze the results focusing on error rates, performance and costs.
 publishDate: "16 August 2024"
 tags: ["llm", "ai", "json"]
 ---
 
 import LLMJSONCharts from "@/components/LLMJSONCharts";
 
-In this post, we dive deep into a comprehensive benchmark of OpenAI models configurations for JSON generation, analyzing their performance across different schema complexities.
+Generating structured data from unstructured inputs is one of the core use cases for AI. Recent release from OpenAI has introduced a new [Structured Outputs](https://openai.com/index/introducing-structured-outputs-in-the-api/) feature that allows you to generate JSONs with a given schema. While it promises guarantees of correctness, I was curious to see how well it performs and what are the caveats.
+
+In this post, I benchmark two different OpenAI models across three different methods of JSON generation and analyze the results focusing on error rates, performance and costs.
+
+> **Disclaimer:** This is not a comprehensive benchmark, but rather a quick experiment that aimed to answer a specific question. Most importantly, it's not focusing on the accuracy of the generated data, but rather on the performance of the LLMs.
 
 ## Experiment Setup
 
-Task: Generate a JSON object adhering to the schema provided.
+Task: Generate a JSON object adhering to the schema provided. Think of mocking data for a database.
 
-We tested six LLM configurations across three JSON schema generation methods:
+I tested six LLM configurations across three JSON schema generation methods:
 
 1. `gpt-4o-mini` generating JSONs using Tool Calls
 2. `gpt-4o-mini` generating JSONs using JSON mode
@@ -28,17 +32,184 @@ And three JSON schema complexities:
 2. **Complex JSON**: 25 fields with 5 levels of nesting
 3. **Super Complex JSON**: 100 fields with 5 levels of nesting
 
-Each configuration was tested 50 times and the average time taken was recorded.
+Each configuration was tested `50` times and the average time taken was recorded.
 
 Full code used to run the experiment can be found in the [GitHub repo](https://github.com/RafalWilinski/llm-benchmarking-structured-generation).
 
-And the full results can be found [here](https://gist.github.com/RafalWilinski/a324ffdb6bac48287609d118c1bf54d1)
+<details>
+  <summary>Full results log:</summary>
+
+```
+Report for schema: Complex JSON Schema
+
+Methods sorted by performance (fastest to slowest):
+1. gpt-4o-2024-08-06-non-strict-tool (Complex JSON Schema)
+   Average time: 4079.0854 ms
+   Success rate: 100.0000%
+   Cost: 0.1680
+2. gpt-4o-mini-non-strict-json (Complex JSON Schema)
+   Average time: 5847.6183 ms
+   Success rate: 100.0000%
+   Cost: 0.0175
+3. gpt-4o-2024-08-06-strict-json (Complex JSON Schema)
+   Average time: 5866.2200 ms
+   Success rate: 100.0000%
+   Cost: 0.1528
+4. gpt-4o-2024-08-06-non-strict-json (Complex JSON Schema)
+   Average time: 6314.3933 ms
+   Success rate: 100.0000%
+   Cost: 0.3026
+5. gpt-4o-mini-strict-json (Complex JSON Schema)
+   Average time: 7858.5114 ms
+   Success rate: 100.0000%
+   Cost: 0.0146
+6. gpt-4o-mini-non-strict-tool (Complex JSON Schema)
+   Average time: 0.0000 ms
+   Success rate: 0.0000%
+   Cost: 0.0000
+
+Methods sorted by cost (cheapest to most expensive):
+1. gpt-4o-mini-strict-json (Complex JSON Schema)
+   Cost: 0.0146
+   Average time: 7858.5114 ms
+   Success rate: 100.0000%
+2. gpt-4o-mini-non-strict-json (Complex JSON Schema)
+   Cost: 0.0175
+   Average time: 5847.6183 ms
+   Success rate: 100.0000%
+3. gpt-4o-2024-08-06-strict-json (Complex JSON Schema)
+   Cost: 0.1528
+   Average time: 5866.2200 ms
+   Success rate: 100.0000%
+4. gpt-4o-2024-08-06-non-strict-tool (Complex JSON Schema)
+   Cost: 0.1680
+   Average time: 4079.0854 ms
+   Success rate: 100.0000%
+5. gpt-4o-2024-08-06-non-strict-json (Complex JSON Schema)
+   Cost: 0.3026
+   Average time: 6314.3933 ms
+   Success rate: 100.0000%
+6. gpt-4o-mini-non-strict-tool (Complex JSON Schema)
+   Cost: 0.0000
+   Average time: 0.0000 ms
+   Success rate: 0.0000%
+
+Report for schema: Wide JSON Schema
+
+Methods sorted by performance (fastest to slowest):
+1. gpt-4o-mini-non-strict-tool (Wide JSON Schema)
+   Average time: 2943.3405 ms
+   Success rate: 100.0000%
+   Cost: 0.0078
+2. gpt-4o-2024-08-06-non-strict-tool (Wide JSON Schema)
+   Average time: 3149.5288 ms
+   Success rate: 100.0000%
+   Cost: 0.1313
+3. gpt-4o-mini-non-strict-json (Wide JSON Schema)
+   Average time: 3603.0182 ms
+   Success rate: 100.0000%
+   Cost: 0.0115
+4. gpt-4o-2024-08-06-strict-json (Wide JSON Schema)
+   Average time: 3852.8140 ms
+   Success rate: 100.0000%
+   Cost: 0.1023
+5. gpt-4o-2024-08-06-non-strict-json (Wide JSON Schema)
+   Average time: 4065.5266 ms
+   Success rate: 100.0000%
+   Cost: 0.1964
+6. gpt-4o-mini-strict-json (Wide JSON Schema)
+   Average time: 4530.8732 ms
+   Success rate: 100.0000%
+   Cost: 0.0060
+
+Methods sorted by cost (cheapest to most expensive):
+1. gpt-4o-mini-strict-json (Wide JSON Schema)
+   Cost: 0.0060
+   Average time: 4530.8732 ms
+   Success rate: 100.0000%
+2. gpt-4o-mini-non-strict-tool (Wide JSON Schema)
+   Cost: 0.0078
+   Average time: 2943.3405 ms
+   Success rate: 100.0000%
+3. gpt-4o-mini-non-strict-json (Wide JSON Schema)
+   Cost: 0.0115
+   Average time: 3603.0182 ms
+   Success rate: 100.0000%
+4. gpt-4o-2024-08-06-strict-json (Wide JSON Schema)
+   Cost: 0.1023
+   Average time: 3852.8140 ms
+   Success rate: 100.0000%
+5. gpt-4o-2024-08-06-non-strict-tool (Wide JSON Schema)
+   Cost: 0.1313
+   Average time: 3149.5288 ms
+   Success rate: 100.0000%
+6. gpt-4o-2024-08-06-non-strict-json (Wide JSON Schema)
+   Cost: 0.1964
+   Average time: 4065.5266 ms
+   Success rate: 100.0000%
+
+Report for schema: Super Complex JSON Schema
+
+Methods sorted by performance (fastest to slowest):
+1. gpt-4o-2024-08-06-strict-json (Super Complex JSON Schema)
+   Average time: 10743.0250 ms
+   Success rate: 100.0000%
+   Cost: 0.3004
+2. gpt-4o-mini-non-strict-json (Super Complex JSON Schema)
+   Average time: 12884.3888 ms
+   Success rate: 100.0000%
+   Cost: 0.0393
+3. gpt-4o-2024-08-06-non-strict-json (Super Complex JSON Schema)
+   Average time: 13041.2693 ms
+   Success rate: 100.0000%
+   Cost: 0.6619
+4. gpt-4o-mini-strict-json (Super Complex JSON Schema)
+   Average time: 13289.3869 ms
+   Success rate: 100.0000%
+   Cost: 0.0241
+5. gpt-4o-2024-08-06-non-strict-tool (Super Complex JSON Schema)
+   Average time: 0.0000 ms
+   Success rate: 0.0000%
+   Cost: 0.0000
+6. gpt-4o-mini-non-strict-tool (Super Complex JSON Schema)
+   Average time: 0.0000 ms
+   Success rate: 0.0000%
+   Cost: 0.0000
+
+Methods sorted by cost (cheapest to most expensive):
+1. gpt-4o-mini-strict-json (Super Complex JSON Schema)
+   Cost: 0.0241
+   Average time: 13289.3869 ms
+   Success rate: 100.0000%
+2. gpt-4o-mini-non-strict-json (Super Complex JSON Schema)
+   Cost: 0.0393
+   Average time: 12884.3888 ms
+   Success rate: 100.0000%
+3. gpt-4o-2024-08-06-strict-json (Super Complex JSON Schema)
+   Cost: 0.3004
+   Average time: 10743.0250 ms
+   Success rate: 100.0000%
+4. gpt-4o-2024-08-06-non-strict-json (Super Complex JSON Schema)
+   Cost: 0.6619
+   Average time: 13041.2693 ms
+   Success rate: 100.0000%
+5. gpt-4o-2024-08-06-non-strict-tool (Super Complex JSON Schema)
+   Cost: 0.0000
+   Average time: 0.0000 ms
+   Success rate: 0.0000%
+6. gpt-4o-mini-non-strict-tool (Super Complex JSON Schema)
+   Cost: 0.0000
+   Average time: 0.0000 ms
+   Success rate: 0.0000%
+```
+
+</details>
 
 ## Results
 
-## Complex JSON Schema
-
 <LLMJSONCharts client:visible />
+
+### Complex JSON Schema
 
 | Method                            | Avg Time (ms) | Time Diff (ms) | Success Rate | Cost   | Cost Diff |
 | --------------------------------- | ------------- | -------------- | ------------ | ------ | --------- |
@@ -49,7 +220,7 @@ And the full results can be found [here](https://gist.github.com/RafalWilinski/a
 | gpt-4o-mini-strict-json           | 7858.5114     | +3779.4260     | 100.0000%    | 0.0146 | 0         |
 | gpt-4o-mini-non-strict-tool       | N/A           | N/A            | 0.0000%      | N/A    | N/A       |
 
-## Wide JSON Schema
+### Wide JSON Schema
 
 | Method                            | Avg Time (ms) | Time Diff (ms) | Success Rate | Cost   | Cost Diff |
 | --------------------------------- | ------------- | -------------- | ------------ | ------ | --------- |
@@ -60,7 +231,7 @@ And the full results can be found [here](https://gist.github.com/RafalWilinski/a
 | gpt-4o-2024-08-06-non-strict-json | 4065.5266     | +1122.1861     | 100.0000%    | 0.1964 | +0.1904   |
 | gpt-4o-mini-strict-json           | 4530.8732     | +1587.5327     | 100.0000%    | 0.0060 | 0         |
 
-## Super Complex JSON Schema
+###s Super Complex JSON Schema
 
 | Method                            | Avg Time (ms) | Time Diff (ms) | Success Rate | Cost   | Cost Diff |
 | --------------------------------- | ------------- | -------------- | ------------ | ------ | --------- |
@@ -101,15 +272,20 @@ This suggests that strictness becomes more valuable as JSON complexity increases
 
 In the most challenging scenario, strict modes shined:
 
-- `gpt-4o-2024-08-06` in Strict Mode was the top performer (10743.0250 ms)
+- `gpt-4o-2024-08-06` in Strict Mode was the top performer
 - Both non-strict tool methods failed entirely
 - Strict JSON methods maintained 100% success rates
+- Surprisingly, smaller model in strict mode was even slower than the bigger model in strict mode
 
 This underscores the critical importance of strictness in handling highly complex JSON structures.
 
 ### The Cold Start in Strict Mode
 
-Using strict mode bears a significant cold start penalty which goes away in the subsequent runs.
+As Ted Sanders mentioned in [this HN comment](https://news.ycombinator.com/item?id=41174306), using strict mode bears a significant cold start penalty which goes away in the subsequent runs.
+
+> The first request with each JSON schema will be slow, as we need to preprocess the JSON schema into a context-free grammar. If you don't want that latency hit (e.g., you're prototyping, or have a use case that uses variable one-off schemas), then you might prefer "strict": false
+
+How much slower it is? Here are my results:
 
 | JSON Schema   | Model                    | Cold Start Penalty |
 | ------------- | ------------------------ | ------------------ |
@@ -123,37 +299,38 @@ Using strict mode bears a significant cold start penalty which goes away in the 
 Interestingly, the impact of strictness on cost varied between model versions:
 
 - For the `gpt-4o-mini` model, strict mode was generally cheaper (e.g., $0.0060 vs $0.0115 for Wide JSON)
-- For the `2024-08-06` model, strict mode was more expensive in simpler scenarios but became cost-effective in the most complex case ($0.3004 vs $0.6619 for Super Complex JSON)
+- For the `2024-08-06` model, strict mode was more cost-effective in all the cases
 
-This suggests that the relationship between strictness and cost is not straightforward and depends on both the model version and the complexity of the task.
+## Caveats
 
-## Practical Recommendations
+While strict mode is superior for more complicated cases, it has limitations that might be disqualifying it from using it in your case:
 
-Based on our findings, we recommend the following approaches:
+- Not all JSONSchema types & features are supported in strict mode. Things like `allOf`, `oneOf`, `not`, `definitions`, `min`, `pattern`, and **most importantly `format`** are not supported
+- JSON can be nested only up to 5 levels and have up to 100 properties
+- `additionalProperties` is not supported
+- All fields are required (but you can make them optional by doing the `"type": ["string", "null"]` trick)
+
+## My Practical Recommendations
+
+Based on my findings, I recommend the following approaches:
 
 1. **For Simple JSON Structures**:
 
    - Prefer non-strict modes, especially tool-based methods for speed and cost-effectiveness
-   - Be aware of the significant cold start penalty if using strict mode
+   - Go with smaller mini model if you can (but don't forget about potential failures, wrap in try/catch accordingly)
 
 2. **For Moderately Complex JSON**:
 
    - Use non-strict modes with more advanced models (e.g., gpt-4o-2024-08-06 with tool calls)
-   - If using less advanced models, strict mode becomes necessary for reliability
-   - Consider the trade-off between reliability and cold start time in strict mode
+   - Always validate the output using Zod schemas
 
 3. **For Highly Complex JSON**:
 
    - Strict modes are essential for reliability and success
    - Use the most advanced model available (e.g., `gpt-4o-2024-08-06` in Strict Mode)
-   - Be prepared for very significant cold start penalties
+   - Be prepared for very significant cold start penalties (goes away in the subsequent runs, neglible when running multiple times in a row)
 
 4. **Cost Considerations**:
 
    - For simpler tasks, non-strict modes are generally more cost-effective
    - For complex tasks, strict modes can be more cost-effective, especially with advanced models
-
-5. **Cold Start Scenarios**:
-   - If your application involves frequent cold starts and uses strict mode, implement robust strategies to mitigate the impact
-   - Consider using non-strict modes for less complex tasks to avoid severe cold start penalties
-   - For mission-critical applications requiring strict mode, consider keeping the model "warm" to avoid frequent cold starts
