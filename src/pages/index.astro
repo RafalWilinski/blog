@@ -8,7 +8,7 @@ const MAX_POSTS = 10;
 const allPosts = await getAllPosts();
 const allPostsByDate = sortMDByDate(allPosts).slice(0, MAX_POSTS);
 
-const cactusTech: { desc: string; href: string; title: string; stars?: string }[] = [
+const cactusTech: { desc: string; href: string; stars?: string; title: string }[] = [
 	{
 		desc: "Gen AI CLI to talk to your AWS,literally.",
 		href: "https://chatwithcloud.ai",
@@ -27,53 +27,53 @@ const cactusTech: { desc: string; href: string; title: string; stars?: string }[
 	{
 		desc: "Realtime Monitoring solution for Node.js/Express.js apps",
 		href: "https://github.com/RafalWilinski/express-status-monitor",
-		title: "express-status-monitor",
 		stars: "3.6k",
+		title: "express-status-monitor",
 	},
 	{
 		desc: "Your LLM assistant available in Telegram",
 		href: "https://github.com/RafalWilinski/telegram-chatgpt-concierge-bot",
-		title: "telegram-chatgpt-concierge-bot",
 		stars: "1.1k",
+		title: "telegram-chatgpt-concierge-bot",
 	},
 	{
 		desc: "Contributed some, brought Kotlin and Java support",
 		href: "https://github.com/serverless/serverless/pulls?page=1&q=is%3Apr+author%3ARafalWilinski+is%3Aclosed",
-		title: "serverless-framework",
 		stars: "46k",
+		title: "serverless-framework",
 	},
 ];
 
-const history: { desc: string; href: string; title: string; dates: string }[] = [
+const history: { dates: string; desc: string; href: string; title: string }[] = [
 	{
+		dates: "2022 - Present",
 		desc: "Kickstarted AI team, leading multiple gen AI projects",
 		href: "https://vendr.com",
 		title: "AI Tech Lead @ Vendr",
-		dates: "2022 - Present",
 	},
 	{
+		dates: "2019 - Present",
 		desc: "Kickstarted and scaled a SaaS from $0 to $150k ARR",
 		href: "https://dynobase.dev",
 		title: "Founder @ Dynobase",
-		dates: "2019 - Present",
 	},
 	{
+		dates: "2020 - 2022",
 		desc: "Building fault-tolerant and multi-region systems on AWS",
 		href: "https://stedi.com",
 		title: "Serverless Engineer @ Stedi",
-		dates: "2020 - 2022",
 	},
 	{
+		dates: "2017 - 2020",
 		desc: "Leading & developing solutions on top of AWS",
 		href: "https://x-team.com",
 		title: "Cloud Engineer @ X-Team",
-		dates: "2017 - 2020",
 	},
 	{
+		dates: "2014 - 2017",
 		desc: "Platform Engineering, AWS, Node.js, Cloud etc.",
 		href: "/",
 		title: "Other companies",
-		dates: "2014 - 2017",
 	},
 ];
 ---
@@ -108,7 +108,7 @@ const history: { desc: string; href: string; title: string; dates: string }[] = 
 		<h2 class="title mb-4 text-xl">Work History</h2>
 		<dl class="space-y-4">
 			{
-				history.map(({ desc, href, title, dates }) => (
+				history.map(({ dates, desc, href, title }) => (
 					<div>
 						<p class="text-xs text-gray-500">{dates} </p>
 						<div class="flex flex-col gap-1 sm:flex-row">
@@ -132,7 +132,7 @@ const history: { desc: string; href: string; title: string; dates: string }[] = 
 		<h2 class="title mb-4 text-xl">Projects</h2>
 		<dl class="space-y-4">
 			{
-				cactusTech.map(({ desc, href, title, stars }) => (
+				cactusTech.map(({ desc, href, stars, title }) => (
 					<div class="flex flex-col gap-2 sm:flex-row">
 						<dt>
 							<span class="flex">

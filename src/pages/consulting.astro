@@ -1,0 +1,111 @@
+---
+import type { GetStaticPaths, Page } from "astro";
+import type { CollectionEntry } from "astro:content";
+
+import PageLayout from "@/layouts/Base.astro";
+import PostPreview from "@/components/blog/PostPreview.astro";
+import { getAllPosts, sortMDByDate } from "@/data/post";
+
+export const getStaticPaths = (async ({ paginate }) => {
+	const MAX_POSTS_PER_PAGE = 10;
+	const allPosts = await getAllPosts();
+	const allPostsByDate = sortMDByDate(allPosts);
+
+	return paginate(allPostsByDate, { pageSize: MAX_POSTS_PER_PAGE });
+}) satisfies GetStaticPaths;
+
+interface Props {
+	page: Page<CollectionEntry<"post">>;
+}
+
+const { page } = Astro.props;
+console.log(page);
+---
+
+<PageLayout meta={{ title: "Home" }}>
+	<section style={{ maxWidth: "640px" }}>
+		<h1 class="mb-4 text-2xl font-bold leading-snug text-white">AI Consulting</h1>
+		<p class="mb-4">
+			I provide a unique mixture of:
+			<ul class="space-y-4">
+				<li>
+					• <b>AI leadership</b> - kickstarted and led AI team at unicorn startup -
+					<a href="https://vendr.com" class="underline">Vendr</a>
+				</li>
+				<li>
+					• <b>Product</b> - bootstrapped <a href="https://dynobase.dev" class="underline"
+						>Dynobase</a
+					> from 0 to over 2,000 paid customers
+				</li>
+				<li>
+					• <b>AWS / Cloud engineering</b> - worked as infra expert for startups and enterprises over
+					the past 10 years
+				</li>
+			</ul>
+
+			<p class="mt-8">
+				This combination of skills allows me to build and deploy AI solutions driving real business
+				value with speed.
+			</p>
+
+			<br />
+		</p>
+		<h2 class="mb-4 mt-8 text-xl font-bold leading-snug text-white">Services provided</h2>
+		<p class="mb-4">I specialize in:</p>
+		<ul class="space-y-4">
+			<li class="">
+				• Building & prototyping quick <b>Proof of Concepts (PoCs)</b> to validate the benefits of AI
+				for your business
+			</li>
+			<li class="">
+				• Finding and <b>implementing AI-powered solutions</b> to automate boring and repetitive tasks
+				within your business processes
+			</li>
+			<li>
+				• <b>Prompt engineering</b> and training your team to become fluent prompting experts
+			</li>
+			<li>
+				• Architecting and <b>developing RAG (Retrieval-Augmented Generation)</b> solutions, enabling
+				AI to work with your data
+			</li>
+			<li>
+				• Building ingestion and <b>transformation data pipelines</b> to prepare your data for AI use
+			</li>
+			<li>
+				• Instrumenting and <b>monitoring AI workloads</b> to ensure consistent quality
+			</li>
+		</ul>
+
+		<h2 class="mb-4 mt-8 text-xl font-bold leading-snug text-white">My Writing</h2>
+		<ul class="space-y-4">
+			<li>
+				<a
+					class="cactus-link"
+					data-astro-prefetch
+					href={`/posts/benchmarking-llms-for-structured-json-generation/`}
+				>
+					Lessons learned from building a RAG over 150,000 PDFs
+				</a>
+			</li>
+			<li>
+				<a class="cactus-link" data-astro-prefetch href={`/posts/make-your-rag-suck-less/`}>
+					Make your RAG suck less
+				</a>
+			</li>
+			<li>
+				<a
+					class="cactus-link"
+					data-astro-prefetch
+					href={`/posts/benchmarking-llms-for-structured-json-generation/`}
+				>
+					Benchmarking OpenAI LLMs for structured JSON generation
+				</a>
+			</li>
+		</ul>
+
+		<h3 class="mt-8 text-lg font-bold">
+			Want to work together?
+			<a href="mailto:raf.wilinski@gmail.com" class="text-blue-500 underline">Get in touch</a>
+		</h3>
+	</section>
+</PageLayout>
