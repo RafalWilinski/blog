@@ -3,7 +3,6 @@ title: Generating JSONs with LLMs - Beyond Basics
 description: Advanced techniques for improving speed, accuracy and cost of JSON generation with LLMs.
 publishDate: "22 August 2024"
 tags: ["llm", "ai", "json"]
-draft: true
 ---
 
 Turning unstructured data into structured data is one of the core use cases for AI. In the OpenAI APIs world, the three most popular methods are:
