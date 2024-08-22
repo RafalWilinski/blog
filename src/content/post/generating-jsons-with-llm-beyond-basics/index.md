@@ -78,7 +78,7 @@ const responses = await Promise.all(
 const merged = responses.reduce((acc, curr) => ({ ...acc, ...curr }), {});
 ```
 
-Be careful though. As I mentioned before, sequence of fields and their co-presence does matter in LLM world. Make sure that your groups are independent logically and that they don't have any dependencies on each other. In case of
+Be careful though. As I mentioned before, sequence of fields and their co-presence does matter in LLM world. Make sure that your groups are independent logically and that they don't have any dependencies on each other. In practical example - if you have an invoice, you can split it into following independent subschemas: `Recipient`, `Sender`, `Items`.
 
 **Cost:** Multiplied input tokens usage.
 
