@@ -18,7 +18,7 @@ You can learn more about their strengths and weaknesses in my [previous blogpost
 ### Enriching the Schema
 
 - Provide `descriptions` for each field. Think of them as mini prompts for each field.
-- Provide `reasoning` for fields that require computings, decision making or computing a value based on other fields. Think of it as mini ["Chain of Thought"](https://www.promptingguide.ai/techniques/cot) approach for each field. [Studies have shown](https://arxiv.org/abs/2201.11903) that providing reasoning can improve the accuracy of the output.
+- Provide `reasoning` for fields that require computings, decision making or computing a value based on other fields. Think of it as mini ["Chain of Thought"](https://www.promptingguide.ai/techniques/cot) approach for each field. [Studies have shown](https://arxiv.org/abs/2201.11903) that providing reasoning can improve the accuracy of the output. (todo: something something about attention mechanism)
 - Not all JSONSchema are supported by the strict mode! Solution to this is: create as detailed schema as possible. Pass dumbed down version of the schema with only supported properties to the LLM. Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors.
 
 **Cost:** Increased input tokens usage
@@ -37,9 +37,15 @@ Once you have multiple JSONs, for each field you can elect to take the most freq
 
 ![Election of the most frequent value](./election.png "Election of the most frequent value")
 
+> todo: code for election
+
 In models from other providers where you cannot use `n` parameter, you can still use the same approach by generating multiple completions. Keep in mind that the cost of such operation would be a multipled for both input and output tokens.
 
 **Cost:** In OpenAI - multiplied output tokens usage. For other providers, multiplied output _and_ input tokens usage.
+
+### Routing
+
+> todo: specialized submodels
 
 ## Increasing Speed
 
@@ -82,3 +88,5 @@ Be careful though. As I mentioned before, sequence of fields and their co-presen
 **Cost:** Multiplied input tokens usage.
 
 ## Reducing Costs
+
+todo...
