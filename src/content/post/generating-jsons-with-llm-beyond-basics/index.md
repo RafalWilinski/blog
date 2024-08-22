@@ -9,7 +9,7 @@ Turning unstructured data into structured data is one of the core use cases for 
 
 - **JSON mode** - Instructing an LLM to output JSON. Instructions regarding the shape of the JSON must included in the prompt. This is also available in [Mistral models](https://docs.mistral.ai/capabilities/json_mode/).
 - **Tool calling** - Instructing an LLM to call a tool that follows a certain JSONSchema. This functionality is also available in Anthropic's Claude models family.
-- **Structured Outputs** - Evolution of JSON Mode with strict schema adherance.
+- **Structured Outputs** - Evolution of JSON Mode with strict schema adherance. This mode while guaranteeing that the output will be a valid JSON adhering to the schema, comes with a cold-start cost of creating a grammar increasing latency for the first request.
 
 You can learn more about their strengths and weaknesses in my [previous blogpost about benchmarking Strict Mode](/posts/benchmarking-llms-for-structured-json-generation/).
 
@@ -19,7 +19,7 @@ You can learn more about their strengths and weaknesses in my [previous blogpost
 
 - Provide `descriptions` for each field. Think of them as mini prompts for each field.
 - Provide `reasoning` for fields that require computings, decision making or computing a value based on other fields. Think of it as mini ["Chain of Thought"](https://www.promptingguide.ai/techniques/cot) approach for each field. [Studies have shown](https://arxiv.org/abs/2201.11903) that providing reasoning can improve the accuracy of the output. (todo: something something about attention mechanism)
-- Not all JSONSchema are supported by the strict mode! Solution to this is: create as detailed schema as possible. Pass dumbed down version of the schema with only supported properties to the LLM. Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors.
+- Not all JSONSchema are supported by the strict mode! Solution to this is: create as detailed schema as possible. Pass dumbed down version of the schema with only supported properties to the LLM. Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors. (todo: provide an example)
 
 **Cost:** Increased input tokens usage
 
