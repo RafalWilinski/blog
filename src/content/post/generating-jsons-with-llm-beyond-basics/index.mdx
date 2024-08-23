@@ -234,6 +234,8 @@ While the large part of use cases of turning unstructured data into structured d
 
 A trick commonly used in traditional computing is to use parallel processing to speed up the operation. This can be also used in LLM world. Split your schema into multiple independent schemas and generate multiple JSONs in parallel. Merge them afterwards.
 
+![Parallel processing](./parallel-processing.png "Parallel processing in LLMs")
+
 Example code in Typescript using `ai` library:
 
 ```typescript
@@ -280,7 +282,9 @@ Moreover, like classical computing, this is also a subject to [Amdahl's law](htt
 
 ### Prompt Caching
 
-This option isn't available in OpenAI APIs but it is Anthropic APIs and Google Gemini.
+In traditional LLM-based JSON generation pipelines, a common pattern emerges: the prompt structure and schema remain constant, while only the input data varies. This means that a significant portion of the prompt—often the largest part—remains unchanged across multiple requests. Prompt caching leverages this consistency to optimize performance and reduce costs.
+
+This option **isn't** available in OpenAI APIs but it is available in Anthropic APIs and Google Gemini.
 
 These two providers employ different approaches to prompt caching:
 
@@ -297,5 +301,7 @@ These two providers employ different approaches to prompt caching:
 ### Cheaper & Smaller models
 
 Another option is to use cheaper & smaller models. In order to maintain the accuracy, you need to invest in solid evaluation and validation process.
+
+But this is not always the case. If running your own inference endpoints is an option, smaller OSS models like Microsoft's Phi-3 in conjunction with [Outlines](https://github.com/outlines-dev/outlines/) can even [beat much larger models](https://blog.dottxt.co/oss-v-gpt4.html) like GPT-4o.
 
 
