@@ -9,9 +9,9 @@ import LLMParallelProcessing from "@/components/LLMParallelProcessing";
 
 Turning unstructured data into structured data is one of the core use cases for AI. In the OpenAI APIs world, the three most popular methods are:
 
-- **JSON mode** - Instructing an LLM to output JSON. Instructions regarding the shape of the JSON must included in the prompt. This is also available in [Mistral models](https://docs.mistral.ai/capabilities/json_mode/).
+- **JSON mode** - Instructing an LLM to output JSON. Instructions regarding the shape of the JSON must be included in the prompt. This is also available in [Mistral models](https://docs.mistral.ai/capabilities/json_mode/).
 - **Tool calling** - Instructing an LLM to call a tool that follows a certain JSONSchema. This functionality is also available in Anthropic's Claude models family.
-- **Structured Outputs** - Evolution of JSON Mode with strict schema adherance. This mode while guaranteeing that the output will be a valid JSON adhering to the schema, comes with a cold-start cost of creating a grammar increasing latency for the first request.
+- **Structured Outputs** - Evolution of JSON Mode with strict schema adherence. This mode, while guaranteeing that the output will be a valid JSON adhering to the schema, comes with a cold-start cost of creating a grammar, increasing latency for the first request.
 
 You can learn more about their strengths and weaknesses in my [previous blogpost about benchmarking Strict Mode](/posts/benchmarking-llms-for-structured-json-generation/).
 
@@ -19,31 +19,31 @@ You can learn more about their strengths and weaknesses in my [previous blogpost
 
 ### Enriching the Schema
 
-Coming up with more detailed, less vague schema is your first line of defense in increasing the accuracy of the output. This includes:
+Coming up with a more detailed, less vague schema is your first line of defense in increasing the accuracy of the output. This includes:
 
 - Providing `descriptions` for each field. Think of them as mini prompts for each field.
 - Providing `reasoning` for fields that require deducing, decision making or computing a value based on other fields. Think of it as a mini ["Chain of Thought"](https://www.promptingguide.ai/techniques/cot) approach for each field. [Studies have shown](https://arxiv.org/abs/2201.11903) that providing reasoning can significantly improve the accuracy of the output. This technique leverages the LLM's ability to follow logical steps, making it particularly effective for complex fields that require inference or calculation. By guiding the model through the reasoning process, we can reduce errors and increase the reliability of the generated data.
-- Not all JSONSchema are supported by the OpenAI's strict mode! Solution to this is: create as detailed schema as possible. Pass dumbed down version of the schema with only supported properties to the LLM (remove things like `min`, `oneOf`, `format`, `regex` etc). Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors. Repeat in the loop until the output is valid
+- Not all JSONSchema are supported by OpenAI's strict mode! The solution to this is: create as detailed a schema as possible. Pass a dumbed-down version of the schema with only supported properties to the LLM (remove things like `min`, `oneOf`, `format`, `regex` etc). Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors. Repeat in the loop until the output is valid.
 
 **Cost:** Increased input tokens usage
 
 ### Fields Sequencing
 
-In traditional computing, the order of fields in JSON does not matter but in LLM it does. Try to put them in as logical order as possible. For instance, when extracting data from invoice, bad order can be something like `"signed_by, invoice number, total, due date"` etc. If you were a human reading this invoice in that order, you would be very confused. LLM will have exactly the same trouble.
+In traditional computing, the order of fields in JSON does not matter, but in LLM it does. Try to put them in as logical an order as possible. For instance, when extracting data from an invoice, a bad order can be something like `"signed_by, invoice number, total, due date"` etc. If you were a human reading this invoice in that order, you would be very confused. LLM will have exactly the same trouble.
 
 **Cost:** Free
 
 ### Multipass mode & election
 
-This one is especiall useful in ambiguous cases and multimodal processing. Consider the following example from [`vidore/docvqa_test_subsampled` dataset](https://huggingface.co/datasets/vidore/docvqa_test_subsampled/viewer):
+This one is especially useful in ambiguous cases and multimodal processing. Consider the following example from the [`vidore/docvqa_test_subsampled` dataset](https://huggingface.co/datasets/vidore/docvqa_test_subsampled/viewer):
 
 ![Example from `vidore/docvqa_test_subsampled` dataset](./unclear-example.png "Example from `vidore/docvqa_test_subsampled` dataset")
 
 - What's the passenger's surname? Is it "Darby" or "Darry"?
 - Is the conjunction ticket number `0015353-530004` or `0018353-530004`?
-- Form of payment is `AGT-CK` or `HGT-GK`?
+- Is the form of payment `AGT-CK` or `HGT-GK`?
 
-LLM might not be able to answer all of these questions with certainty. In such cases, you can use the `n` parameter, which allows for generating multiple completions in one request. This can be used to generate multiple JSONs in a single request and pay for the input just once (you will still be billed a multiple of `n` for the output tokens). This combined with bigger `temperature` which increases models creativity, can be used to ensemble a "mixture of results" approach.
+LLM might not be able to answer all of these questions with certainty. In such cases, you can use the `n` parameter, which allows for generating multiple completions in one request. This can be used to generate multiple JSONs in a single request and pay for the input just once (you will still be billed a multiple of `n` for the output tokens). This, combined with a bigger `temperature` which increases the model's creativity, can be used to ensemble a "mixture of results" approach.
 
 Once you have multiple JSONs, for each field you can elect to take the most frequent value by using majority voting to decide on the value.
 
@@ -132,7 +132,7 @@ console.log(mergedResult);
 
 </details>
 
-In models from other providers where you cannot use `n` parameter, you can still use the same approach by generating multiple completions. Keep in mind that the cost of such operation would be a multipled for both input and output tokens.
+In models from other providers where you cannot use the `n` parameter, you can still use the same approach by generating multiple completions. Keep in mind that the cost of such an operation would be multiplied for both input and output tokens.
 
 **Cost:** In OpenAI - multiplied output tokens usage. For other providers, multiplied output _and_ input tokens usage.
 
@@ -232,15 +232,15 @@ console.log(result);
 
 ## Increasing Speed
 
-While the large part of use cases of turning unstructured data into structured data is async/not time-sensitive, there are still cases where speed is critical. Examples include an application that parses your resume in order to provide actionable insights or an application that parses your invoice in order to provide you with a summary of expenses.
+While a large part of use cases for turning unstructured data into structured data is async/not time-sensitive, there are still cases where speed is critical. Examples include an application that parses your resume in order to provide actionable insights or an application that parses your invoice in order to provide you with a summary of expenses.
 
 ### Parallel Processing
 
-A trick commonly used in traditional computing is to use parallel processing to speed up the operation. This can be also used in LLM world. Split your schema into multiple independent schemas and generate multiple JSONs in parallel. Merge them afterwards.
+A trick commonly used in traditional computing is to use parallel processing to speed up the operation. This can also be used in the LLM world. Split your schema into multiple independent schemas and generate multiple JSONs in parallel. Merge them afterwards.
 
 ![Parallel processing](./parallel-processing.png "Parallel processing in LLMs")
 
-Example code in Typescript using `ai` library:
+Example code in TypeScript using `ai` library:
 
 ```typescript
 import { generateObject } from "ai";
@@ -274,9 +274,9 @@ const merged = responses.reduce((acc, curr) => ({ ...acc, ...curr }), {});
 
 #### Caveats
 
-Be careful though. As I mentioned before, sequence of fields and their co-presence does matter in LLM world. Make sure that your groups are independent logically and that they don't have any dependencies on each other. In practical example - if you have an invoice, you can split it into following independent subschemas: `Recipient`, `Sender`, `Items`.
+Be careful though. As I mentioned before, the sequence of fields and their co-presence does matter in the LLM world. Make sure that your groups are independent logically and that they don't have any dependencies on each other. In a practical example - if you have an invoice, you can split it into the following independent subschemas: `Recipient`, `Sender`, `Items`.
 
-Moreover, like classical computing, this is also a subject to [Amdahl's law](https://en.wikipedia.org/wiki/Amdahl%27s_law) or _the law of diminishing returns_ with slight twist:
+Moreover, like classical computing, this is also subject to [Amdahl's law](https://en.wikipedia.org/wiki/Amdahl%27s_law) or _the law of diminishing returns_ with a slight twist:
 
 <LLMParallelProcessing client:visible />
 
@@ -297,13 +297,13 @@ These two providers employ different approaches to prompt caching:
 | Cost Reduction            | Up to 90%                                             | Halves the cost per prompt; $4.50 per million tokens per hour storage cost |
 | Latency Reduction         | Up to 85%                                             | Improved efficiency; specific percentage not provided                      |
 | Cache Lifetime            | 5 minutes                                             | 1 hour by default, adjustable                                              |
-| Minimum Cachable Tokens   | 1024 tokens (Claude 3.5 Sonet & Claude 3 Opus)        | 32,000 tokens                                                              |
+| Minimum Cachable Tokens   | 1024 tokens (Claude 3.5 Sonnet & Claude 3 Opus)       | 32,000 tokens                                                              |
 | Cache Writing Cost        | 25% more than base input token price                  | $1 per million tokens per hour (storage cost)                              |
 | Use Case Suitability      | Suitable for short-term, small document caching       | Better for long-term, large document or codebase caching                   |
 | Token Storage Flexibility | Smaller cache, shorter duration; good for quick tasks | Larger cache, adjustable duration; good for extended tasks                 |
 
 ### Cheaper & Smaller models
 
-Another option is to use cheaper & smaller models. In order to maintain the accuracy, you need to invest in solid evaluation and validation process.
+Another option is to use cheaper & smaller models. In order to maintain accuracy, you need to invest in a solid evaluation and validation process.
 
 But this is not always the case. If running your own inference endpoints is an option, smaller OSS models like Microsoft's Phi-3 in conjunction with [Outlines](https://github.com/outlines-dev/outlines/) can even [beat much larger models](https://blog.dottxt.co/oss-v-gpt4.html) like GPT-4o.
