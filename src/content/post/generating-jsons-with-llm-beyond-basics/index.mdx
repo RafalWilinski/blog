@@ -1,5 +1,5 @@
 ---
-title: Generating JSONs with LLMs - Beyond Basics
+title: Generating structured data with LLMs - Beyond Basics
 description: Advanced techniques for improving speed, accuracy and cost of JSON generation with LLMs.
 publishDate: "23 August 2024"
 tags: ["llm", "ai", "json"]
@@ -22,7 +22,7 @@ You can learn more about their strengths and weaknesses in my [previous blogpost
 Coming up with more detailed, less vague schema is your first line of defense in increasing the accuracy of the output. This includes:
 
 - Providing `descriptions` for each field. Think of them as mini prompts for each field.
-- Providing `reasoning` for fields that require deducing, decision making or computing a value based on other fields. Think of it as mini ["Chain of Thought"](https://www.promptingguide.ai/techniques/cot) approach for each field. [Studies have shown](https://arxiv.org/abs/2201.11903) that providing reasoning can improve the accuracy of the output. (todo: something something about attention mechanism)
+- Providing `reasoning` for fields that require deducing, decision making or computing a value based on other fields. Think of it as a mini ["Chain of Thought"](https://www.promptingguide.ai/techniques/cot) approach for each field. [Studies have shown](https://arxiv.org/abs/2201.11903) that providing reasoning can significantly improve the accuracy of the output. This technique leverages the LLM's ability to follow logical steps, making it particularly effective for complex fields that require inference or calculation. By guiding the model through the reasoning process, we can reduce errors and increase the reliability of the generated data.
 - Not all JSONSchema are supported by the strict mode! Solution to this is: create as detailed schema as possible. Pass dumbed down version of the schema with only supported properties to the LLM. Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors. (todo: provide an example)
 
 **Cost:** Increased input tokens usage
@@ -135,15 +135,102 @@ In models from other providers where you cannot use `n` parameter, you can still
 
 **Cost:** In OpenAI - multiplied output tokens usage. For other providers, multiplied output _and_ input tokens usage.
 
-### Routing
+  ### Routing
 
-> todo: specialized submodels
+When dealing with heterogeneous or unknown data, routing can significantly improve the accuracy and efficiency of JSON generation. This process typically involves two key steps:
+
+1. **Classification**: First, use a general-purpose model to classify the input data into predefined categories. This step helps determine the nature of the data and which specialized model would be most appropriate for processing it.
+
+2. **Specialized Schema Usage**: Once classified, route the data to a specialized prompt with a purpose-built schema for that data type. These specialized schemas are designed for particular data structures, allowing for more accurate and efficient JSON generation.
+
+By implementing this routing approach, you can leverage the strengths of different models for various data types, ultimately leading to higher quality structured data output.
 
 ![Example of routing](./routing.png "Example of routing")
+
+<details>
+<summary>Example TS code for routing</summary>
+
+```typescript
+import { generateObject } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
+
+// Define the classification schema
+const classificationSchema = z.object({
+  documentType: z.enum(["invoice", "orderForm"]),
+});
+
+// Define the invoice schema
+const invoiceSchema = z.object({
+  invoiceNumber: z.string(),
+  date: z.string(),
+  totalAmount: z.number(),
+  items: z.array(z.object({
+    description: z.string(),
+    quantity: z.number(),
+    unitPrice: z.number(),
+  })),
+});
+
+// Define the order form schema
+const orderFormSchema = z.object({
+  orderNumber: z.string(),
+  customerName: z.string(),
+  products: z.array(z.object({
+    productName: z.string(),
+    quantity: z.number(),
+  })),
+  shippingAddress: z.string(),
+});
+
+async function extractDocument(ocrText: string) {
+  // Step 1: Classify the document
+  const { object: classification } = await generateObject({
+    model: openai("gpt-4"),
+    schema: classificationSchema,
+    prompt: `Classify the following OCR text as either an invoice or an order form:\n\n${ocrText}`,
+  });
+
+  // Step 2: Route to the appropriate schema based on classification
+  if (classification.documentType === "invoice") {
+    const { object: invoice } = await generateObject({
+      model: openai("gpt-4"),
+      schema: invoiceSchema,
+      prompt: `Extract invoice information from the following OCR text:\n\n${ocrText}`,
+    });
+    return { type: "invoice", data: invoice };
+  } else {
+    const { object: orderForm } = await generateObject({
+      model: openai("gpt-4"),
+      schema: orderFormSchema,
+      prompt: `Extract order form information from the following OCR text:\n\n${ocrText}`,
+    });
+    return { type: "orderForm", data: orderForm };
+  }
+}
+
+// Usage example
+const ocrText = `INVOICE
+Invoice #: INV-2023-001
+Date: 2023-05-15
+Total Amount: $500.00
+
+Items:
+1. Widget A - Qty: 2, Price: $100.00
+2. Widget B - Qty: 3, Price: $100.00`;
+
+const result = await extractDocument(ocrText);
+console.log(result);
+```
+</details>
 
 
 
 ## Increasing Speed
+
+While the large part of use cases of turning unstructured data into structured data is async/not time-sensitive, there are still cases where speed is critical. Examples include an application that parses your resume in order to provide actionable insights or an application that parses your invoice in order to provide you with a summary of expenses.
+
+### Parallel Processing
 
 A trick commonly used in traditional computing is to use parallel processing to speed up the operation. This can be also used in LLM world. Split your schema into multiple independent schemas and generate multiple JSONs in parallel. Merge them afterwards.
 
@@ -187,12 +274,28 @@ Moreover, like classical computing, this is also a subject to [Amdahl's law](htt
 
 <LLMParallelProcessing client:visible />
 
-
-
 **Cost:** Multiplied input tokens usage.
 
 ## Reducing Costs
 
-If you don't want to sacrifice accuracy, the only option you can go here is to use a cheaper & smaller models.
+### Prompt Caching
+
+This option isn't available in OpenAI APIs but it is Anthropic APIs and Google Gemini.
+
+These two providers employ different approaches to prompt caching:
+
+| Feature/Aspect | Anthropic Prompt Caching | Google Gemini Context Cache |
+|----------------|--------------------------|---------------------------|
+| Cost Reduction | Up to 90% | Halves the cost per prompt; $4.50 per million tokens per hour storage cost |
+| Latency Reduction | Up to 85% | Improved efficiency; specific percentage not provided |
+| Cache Lifetime | 5 minutes | 1 hour by default, adjustable |
+| Minimum Cachable Tokens | 1024 tokens (Claude 3.5 Sonet & Claude 3 Opus) | 32,000 tokens |
+| Cache Writing Cost | 25% more than base input token price | $1 per million tokens per hour (storage cost) |
+| Use Case Suitability | Suitable for short-term, small document caching | Better for long-term, large document or codebase caching |
+| Token Storage Flexibility | Smaller cache, shorter duration; good for quick tasks | Larger cache, adjustable duration; good for extended tasks |
+
+### Cheaper & Smaller models
+
+Another option is to use cheaper & smaller models. In order to maintain the accuracy, you need to invest in solid evaluation and validation process.
 
 
