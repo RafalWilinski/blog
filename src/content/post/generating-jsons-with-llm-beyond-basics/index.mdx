@@ -23,7 +23,7 @@ Coming up with more detailed, less vague schema is your first line of defense in
 
 - Providing `descriptions` for each field. Think of them as mini prompts for each field.
 - Providing `reasoning` for fields that require deducing, decision making or computing a value based on other fields. Think of it as a mini ["Chain of Thought"](https://www.promptingguide.ai/techniques/cot) approach for each field. [Studies have shown](https://arxiv.org/abs/2201.11903) that providing reasoning can significantly improve the accuracy of the output. This technique leverages the LLM's ability to follow logical steps, making it particularly effective for complex fields that require inference or calculation. By guiding the model through the reasoning process, we can reduce errors and increase the reliability of the generated data.
-- Not all JSONSchema are supported by the strict mode! Solution to this is: create as detailed schema as possible. Pass dumbed down version of the schema with only supported properties to the LLM. Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors. (todo: provide an example)
+- Not all JSONSchema are supported by the OpenAI's strict mode! Solution to this is: create as detailed schema as possible. Pass dumbed down version of the schema with only supported properties to the LLM (remove things like `min`, `oneOf`, `format`, `regex` etc). Validate the output against the full schema using e.g. Zod. Get the validation errors and pass them to the LLM along with the output and ask it to fix the errors. Repeat in the loop until the output is valid
 
 **Cost:** Increased input tokens usage
 
@@ -53,89 +53,90 @@ Once you have multiple JSONs, for each field you can elect to take the most freq
 <summary>Example TS code for merging multiple JSONs</summary>
 
 ```typescript
-import { ChatCompletion, ChatCompletionMessage } from 'openai';
+import { ChatCompletion, ChatCompletionMessage } from "openai";
 
 type JsonValue = string | number | boolean | null | JsonArray | JsonObject;
 type JsonArray = JsonValue[];
 type JsonObject = { [key: string]: JsonValue };
 
 function getMostFrequentValue(values: JsonValue[]): JsonValue {
-  const counts = new Map<string, { count: number; value: JsonValue }>();
-  let maxCount = 0;
-  let mostFrequent: JsonValue;
+	const counts = new Map<string, { count: number; value: JsonValue }>();
+	let maxCount = 0;
+	let mostFrequent: JsonValue;
 
-  for (const value of values) {
-    const stringValue = JSON.stringify(value);
-    const current = counts.get(stringValue) || { count: 0, value };
-    current.count++;
-    counts.set(stringValue, current);
+	for (const value of values) {
+		const stringValue = JSON.stringify(value);
+		const current = counts.get(stringValue) || { count: 0, value };
+		current.count++;
+		counts.set(stringValue, current);
 
-    if (current.count > maxCount) {
-      maxCount = current.count;
-      mostFrequent = current.value;
-    }
-  }
+		if (current.count > maxCount) {
+			maxCount = current.count;
+			mostFrequent = current.value;
+		}
+	}
 
-  return mostFrequent!;
+	return mostFrequent!;
 }
 
 function mergeJsonValues(values: JsonValue[]): JsonValue {
-  if (values.length === 0) return null;
-  
-  if (values.every(v => Array.isArray(v))) {
-    return mergeJsonArrays(values as JsonArray[]);
-  }
-  
-  if (values.every(v => typeof v === 'object' && v !== null && !Array.isArray(v))) {
-    return mergeJsonObjects(values as JsonObject[]);
-  }
-  
-  return getMostFrequentValue(values);
+	if (values.length === 0) return null;
+
+	if (values.every((v) => Array.isArray(v))) {
+		return mergeJsonArrays(values as JsonArray[]);
+	}
+
+	if (values.every((v) => typeof v === "object" && v !== null && !Array.isArray(v))) {
+		return mergeJsonObjects(values as JsonObject[]);
+	}
+
+	return getMostFrequentValue(values);
 }
 
 function mergeJsonArrays(arrays: JsonArray[]): JsonArray {
-  const maxLength = Math.max(...arrays.map(arr => arr.length));
-  const result: JsonArray = [];
+	const maxLength = Math.max(...arrays.map((arr) => arr.length));
+	const result: JsonArray = [];
 
-  for (let i = 0; i < maxLength; i++) {
-    const values = arrays.map(arr => arr[i]).filter(v => v !== undefined);
-    result.push(mergeJsonValues(values));
-  }
+	for (let i = 0; i < maxLength; i++) {
+		const values = arrays.map((arr) => arr[i]).filter((v) => v !== undefined);
+		result.push(mergeJsonValues(values));
+	}
 
-  return result;
+	return result;
 }
 
 function mergeJsonObjects(objects: JsonObject[]): JsonObject {
-  const result: JsonObject = {};
+	const result: JsonObject = {};
 
-  for (const key of new Set(objects.flatMap(obj => Object.keys(obj)))) {
-    const values = objects.map(obj => obj[key]).filter(v => v !== undefined);
-    result[key] = mergeJsonValues(values);
-  }
+	for (const key of new Set(objects.flatMap((obj) => Object.keys(obj)))) {
+		const values = objects.map((obj) => obj[key]).filter((v) => v !== undefined);
+		result[key] = mergeJsonValues(values);
+	}
 
-  return result;
+	return result;
 }
 
 function mergeChatCompletionChoices(completion: ChatCompletion): JsonValue {
-  const parsedContents = completion.choices.map(choice => {
-    const message = choice.message as ChatCompletionMessage;
-    return JSON.parse(message.content || 'null');
-  });
+	const parsedContents = completion.choices.map((choice) => {
+		const message = choice.message as ChatCompletionMessage;
+		return JSON.parse(message.content || "null");
+	});
 
-  return mergeJsonValues(parsedContents);
+	return mergeJsonValues(parsedContents);
 }
 
 // Usage example
 const mergedResult = mergeChatCompletionChoices(chatCompletionResponse);
 console.log(mergedResult);
 ```
+
 </details>
 
 In models from other providers where you cannot use `n` parameter, you can still use the same approach by generating multiple completions. Keep in mind that the cost of such operation would be a multipled for both input and output tokens.
 
 **Cost:** In OpenAI - multiplied output tokens usage. For other providers, multiplied output _and_ input tokens usage.
 
-  ### Routing
+### Routing
 
 When dealing with heterogeneous or unknown data, routing can significantly improve the accuracy and efficiency of JSON generation. This process typically involves two key steps:
 
@@ -157,56 +158,60 @@ import { z } from "zod";
 
 // Define the classification schema
 const classificationSchema = z.object({
-  documentType: z.enum(["invoice", "orderForm"]),
+	documentType: z.enum(["invoice", "orderForm"]),
 });
 
 // Define the invoice schema
 const invoiceSchema = z.object({
-  invoiceNumber: z.string(),
-  date: z.string(),
-  totalAmount: z.number(),
-  items: z.array(z.object({
-    description: z.string(),
-    quantity: z.number(),
-    unitPrice: z.number(),
-  })),
+	invoiceNumber: z.string(),
+	date: z.string(),
+	totalAmount: z.number(),
+	items: z.array(
+		z.object({
+			description: z.string(),
+			quantity: z.number(),
+			unitPrice: z.number(),
+		}),
+	),
 });
 
 // Define the order form schema
 const orderFormSchema = z.object({
-  orderNumber: z.string(),
-  customerName: z.string(),
-  products: z.array(z.object({
-    productName: z.string(),
-    quantity: z.number(),
-  })),
-  shippingAddress: z.string(),
+	orderNumber: z.string(),
+	customerName: z.string(),
+	products: z.array(
+		z.object({
+			productName: z.string(),
+			quantity: z.number(),
+		}),
+	),
+	shippingAddress: z.string(),
 });
 
 async function extractDocument(ocrText: string) {
-  // Step 1: Classify the document
-  const { object: classification } = await generateObject({
-    model: openai("gpt-4"),
-    schema: classificationSchema,
-    prompt: `Classify the following OCR text as either an invoice or an order form:\n\n${ocrText}`,
-  });
+	// Step 1: Classify the document
+	const { object: classification } = await generateObject({
+		model: openai("gpt-4"),
+		schema: classificationSchema,
+		prompt: `Classify the following OCR text as either an invoice or an order form:\n\n${ocrText}`,
+	});
 
-  // Step 2: Route to the appropriate schema based on classification
-  if (classification.documentType === "invoice") {
-    const { object: invoice } = await generateObject({
-      model: openai("gpt-4"),
-      schema: invoiceSchema,
-      prompt: `Extract invoice information from the following OCR text:\n\n${ocrText}`,
-    });
-    return { type: "invoice", data: invoice };
-  } else {
-    const { object: orderForm } = await generateObject({
-      model: openai("gpt-4"),
-      schema: orderFormSchema,
-      prompt: `Extract order form information from the following OCR text:\n\n${ocrText}`,
-    });
-    return { type: "orderForm", data: orderForm };
-  }
+	// Step 2: Route to the appropriate schema based on classification
+	if (classification.documentType === "invoice") {
+		const { object: invoice } = await generateObject({
+			model: openai("gpt-4"),
+			schema: invoiceSchema,
+			prompt: `Extract invoice information from the following OCR text:\n\n${ocrText}`,
+		});
+		return { type: "invoice", data: invoice };
+	} else {
+		const { object: orderForm } = await generateObject({
+			model: openai("gpt-4"),
+			schema: orderFormSchema,
+			prompt: `Extract order form information from the following OCR text:\n\n${ocrText}`,
+		});
+		return { type: "orderForm", data: orderForm };
+	}
 }
 
 // Usage example
@@ -222,9 +227,8 @@ Items:
 const result = await extractDocument(ocrText);
 console.log(result);
 ```
+
 </details>
-
-
 
 ## Increasing Speed
 
@@ -268,7 +272,7 @@ const responses = await Promise.all(
 const merged = responses.reduce((acc, curr) => ({ ...acc, ...curr }), {});
 ```
 
-#### Caveats 
+#### Caveats
 
 Be careful though. As I mentioned before, sequence of fields and their co-presence does matter in LLM world. Make sure that your groups are independent logically and that they don't have any dependencies on each other. In practical example - if you have an invoice, you can split it into following independent subschemas: `Recipient`, `Sender`, `Items`.
 
@@ -288,20 +292,18 @@ This option **isn't** available in OpenAI APIs but it is available in Anthropic 
 
 These two providers employ different approaches to prompt caching:
 
-| Feature/Aspect | Anthropic Prompt Caching | Google Gemini Context Cache |
-|----------------|--------------------------|---------------------------|
-| Cost Reduction | Up to 90% | Halves the cost per prompt; $4.50 per million tokens per hour storage cost |
-| Latency Reduction | Up to 85% | Improved efficiency; specific percentage not provided |
-| Cache Lifetime | 5 minutes | 1 hour by default, adjustable |
-| Minimum Cachable Tokens | 1024 tokens (Claude 3.5 Sonet & Claude 3 Opus) | 32,000 tokens |
-| Cache Writing Cost | 25% more than base input token price | $1 per million tokens per hour (storage cost) |
-| Use Case Suitability | Suitable for short-term, small document caching | Better for long-term, large document or codebase caching |
-| Token Storage Flexibility | Smaller cache, shorter duration; good for quick tasks | Larger cache, adjustable duration; good for extended tasks |
+| Feature/Aspect            | Anthropic Prompt Caching                              | Google Gemini Context Cache                                                |
+| ------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| Cost Reduction            | Up to 90%                                             | Halves the cost per prompt; $4.50 per million tokens per hour storage cost |
+| Latency Reduction         | Up to 85%                                             | Improved efficiency; specific percentage not provided                      |
+| Cache Lifetime            | 5 minutes                                             | 1 hour by default, adjustable                                              |
+| Minimum Cachable Tokens   | 1024 tokens (Claude 3.5 Sonet & Claude 3 Opus)        | 32,000 tokens                                                              |
+| Cache Writing Cost        | 25% more than base input token price                  | $1 per million tokens per hour (storage cost)                              |
+| Use Case Suitability      | Suitable for short-term, small document caching       | Better for long-term, large document or codebase caching                   |
+| Token Storage Flexibility | Smaller cache, shorter duration; good for quick tasks | Larger cache, adjustable duration; good for extended tasks                 |
 
 ### Cheaper & Smaller models
 
 Another option is to use cheaper & smaller models. In order to maintain the accuracy, you need to invest in solid evaluation and validation process.
 
 But this is not always the case. If running your own inference endpoints is an option, smaller OSS models like Microsoft's Phi-3 in conjunction with [Outlines](https://github.com/outlines-dev/outlines/) can even [beat much larger models](https://blog.dottxt.co/oss-v-gpt4.html) like GPT-4o.
-
-
