@@ -284,7 +284,7 @@ Moreover, like classical computing, this is also a subject to [Amdahl's law](htt
 
 ## Reducing Costs
 
-### Prompt Caching
+### Prompt Caching (also reduces latency)
 
 In traditional LLM-based JSON generation pipelines, a common pattern emerges: the prompt structure and schema remain constant, while only the input data varies. This means that a significant portion of the prompt—often the largest part—remains unchanged across multiple requests. Prompt caching leverages this consistency to optimize performance and reduce costs.
 
