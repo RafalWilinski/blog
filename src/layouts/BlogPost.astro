@@ -39,6 +39,32 @@ const { headings } = await post.render();
 					>
 				</p>
 				<WebMentions />
+				<div class="mt-8 border-t border-gray-200 pt-8 dark:border-gray-700">
+					<form
+						action="https://buttondown.com/api/emails/embed-subscribe/wilinski"
+						method="post"
+						class="embeddable-buttondown-form flex max-w-md flex-col gap-4"
+					>
+						<label for="email" class="text-md font-semibold"
+							>Liked it? Subscribe to my newsletter</label
+						>
+						<div class="flex gap-2">
+							<input
+								type="email"
+								name="email"
+								id="email"
+								placeholder="you@example.com"
+								class="flex-1 rounded-md border border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-800"
+							/>
+							<input
+								type="submit"
+								value="Subscribe"
+								class="cursor-pointer rounded-md bg-accent px-4 py-2 font-semibold text-white hover:bg-accent/90"
+							/>
+						</div>
+						<input type="hidden" value="1" name="embed" />
+					</form>
+				</div>
 			</div>
 		</article>
 	</div>
