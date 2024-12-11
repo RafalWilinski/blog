@@ -1,9 +1,8 @@
 ---
-title: "Building Better AI Agents: Core Principles"
+title: "The Principles for More Reliable, Safer and Faster AI Agents"
 description: Definitive guide to building better AI agents driving business value.
-publishDate: "10 December 2024"
+publishDate: "12 December 2024"
 tags: ["llm", "ai", "agents"]
-draft: true
 ---
 
 What's an "AI Agent"?
@@ -214,6 +213,8 @@ Plans that worked in the past:
 ${await db.getSuccessfulPlans(query)}`;
 ```
 
+Similar example of "skill acquisition" is the [Voyager agent](https://arxiv.org/abs/2305.16291) that was able to learn and accumulate skills over time.
+
 ### 4. Incorporate Human Oversight
 
 AI agents often interact with real-world systems, making human supervision crucial. Implement checkpoints for:
@@ -247,9 +248,13 @@ Define clear success criteria for each agent. Gather user feedback on the outcom
 
 ### 8. Retrieval Augmented Generation (RAG)
 
+RAG is a technique that allows agents to retrieve information from a database or external sources.
+
 ### 9. Security
 
-Don't give your agent wildcard access to your system. Instead, rely on the already existing authentication and authorization mechanisms. For instance, if your agent needs to be able to fetch users data, it shouldn't have access to the database directly. Instead, it should use the existing API make calls on users behalf using their identity to fetch the data. That will not only prevent the agent from accessing unauthorized data (cross tenant leaks) but also make the behavior space more bounded and predictable.
+Don't give your agent wildcard access to your system, that is a recipe for disaster. New jailbreaking techniques are being developed every day and it's only a matter of time before malicious actor will be able to exploit your agent, either by impersonating other users or accessing unauthorized data.
+
+Instead, rely on the already existing authentication and authorization mechanisms. For instance, if your agent needs to be able to fetch users data, it should use the existing API make calls on users behalf using their identity to fetch the data. That will not only prevent the agent from accessing unauthorized data (cross-tenant leaks) but also make the behavior space more bounded and predictable (using available API calls instead of crafting SQL queries).
 
 ## Conclusion
 
