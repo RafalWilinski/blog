@@ -115,7 +115,7 @@ Split your agent's operation into two distinct phases:
   - Handles specific implementation details
   - Doesn't need to understand the overall goal
 
-This separation prevents context pollution and keeps each component focused on its specific role. For example:
+This separation prevents context pollution (imagine executor dealing with huge API responses or repeated errors) and keeps each component focused on its specific role. For example:
 
 ```typescript
 interface Plan {
@@ -142,7 +142,13 @@ const result = await planner.createPlan(task);
 await executor.executePlan(result.plan);
 ```
 
-This approach significantly improves reliability and makes the system more maintainable. Additionally, it allows for using different models based on the task complexity - smaller, more cost-effective models can handle trivial execution steps while keeping the expensive, powerful models for high-level planning.
+This approach significantly improves reliability and makes the system more maintainable.
+
+It also has several benefits:
+
+- Instead of having one big e2e eval, you can easily monitor & eval smaller parts of the system and iterate on them independently like in unit tests
+- Failures in tools are isolated to the executor and aren't forcing you to rewrite the plan and star over the whole flow
+- Allows for using different models based on the task complexity - smaller, more cost-effective models can handle trivial execution steps while keeping the expensive, powerful models for high-level planning
 
 ### 3. Leverage Plan Reusability
 
