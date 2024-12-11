@@ -37,3 +37,7 @@
 		max-width: 80ch !important;
 	}
 }
+
+.prose {
+	max-width: 80ch !important;
+}
