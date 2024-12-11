@@ -1,0 +1,360 @@
+---
+title: "From Basic to Advanced RAG: A Data-Driven Improvement Guide"
+description: A comprehensive guide to improving RAG systems, from basic to advanced.
+publishDate: "10 December 2024"
+tags: ["llm", "ai", "rag"]
+draft: true
+---
+
+# From Basic to Advanced RAG: A Data-Driven Improvement Guide
+
+Okay, so if you deployed your initial RAG implementation, it's probably not good. The answers that it's generating are often missing something or are not accurate enough. In this article, I'll try to guide you through the process of how you can go from your initial basic implementation to something quite advanced.
+
+## Start with Measurement
+
+The most common mistake I see teams make is jumping straight into improvements without proper measurement. When I first started improving RAG systems, I fell into this trap myself – making changes based on intuition rather than data. Let me show you how to avoid this mistake.
+
+### Building Your Evaluation Framework
+
+First, you need a comprehensive test set. This isn't just a handful of questions you think users might ask – it should include:
+
+1. Real user queries from your logs
+2. Edge cases that have caused failures
+3. Different query types (factual, analytical, summarization)
+4. Questions with known, verifiable answers
+
+For example, in a customer support RAG system I worked on, we included:
+
+- Direct product questions ("What's the refund policy for Premium tier?")
+- Multi-hop queries ("How do I upgrade my account and what are the benefits?")
+- Questions requiring synthesis ("Compare the Enterprise and Premium pricing tiers")
+- Edge cases ("What's the SLA for the discontinued Basic tier?")
+
+### Setting Up Automated Evaluation
+
+Manual evaluation doesn't scale. Here's a practical evaluation pipeline:
+
+```python
+class RAGEvaluator:
+    def evaluate_retrieval(self, query, retrieved_docs, ground_truth):
+        """
+        Evaluates retrieval performance using multiple metrics
+        """
+        metrics = {
+            'recall': self._calculate_recall(retrieved_docs, ground_truth),
+            'precision': self._calculate_precision(retrieved_docs, ground_truth),
+            'coverage': self._calculate_coverage(retrieved_docs, query),
+            'latency': self._measure_latency()
+        }
+        return metrics
+
+    def evaluate_response(self, generated_answer, ground_truth):
+        """
+        Evaluates answer quality using model-based evaluation
+        """
+        evaluation_prompt = f"""
+        Question: {self.query}
+        Generated Answer: {generated_answer}
+        Ground Truth: {ground_truth}
+
+        Evaluate the generated answer on:
+        1. Factual accuracy
+        2. Completeness
+        3. Relevance
+
+        Score each aspect 1-5 and provide specific reasons.
+        """
+        # Use a separate LLM for evaluation
+        return self._evaluate_with_llm(evaluation_prompt)
+```
+
+Track these metrics over time in a dashboard. We use tools like MLflow to track experiments, but even a simple spreadsheet is better than nothing.
+
+## Adding Hybrid Search
+
+Pure semantic search often fails in surprising ways. Let me give you a real example from our production system:
+
+User query: "What's the pricing for SKU-123-456?"
+
+- Semantic search result: Multiple documents about pricing, none mentioning the specific SKU
+- Full-text search result: Exact document with the SKU pricing
+- Hybrid search: Found both the specific pricing and related context
+
+### Implementing Hybrid Search
+
+Here's a practical implementation combining embeddings and BM25:
+
+```python
+class HybridSearcher:
+    def __init__(self, vector_store, text_store):
+        self.vector_store = vector_store
+        self.text_store = text_store
+
+    def search(self, query, k=10):
+        # Get results from both sources
+        vector_results = self.vector_store.search(query, k=k)
+        text_results = self.text_store.search(query, k=k)
+
+        # Combine using Reciprocal Rank Fusion
+        combined = self._reciprocal_rank_fusion(
+            [vector_results, text_results],
+            k1=60  # RRF constant, tune based on your data
+        )
+
+        return combined[:k]
+
+    def _reciprocal_rank_fusion(self, results_lists, k1=60):
+        """
+        Implements RRF ranking fusion
+        score = sum(1 / (k1 + r) where r is rank of document in each list)
+        """
+        scores = defaultdict(float)
+        for results in results_lists:
+            for rank, doc in enumerate(results):
+                scores[doc.id] += 1.0 / (k1 + rank)
+
+        return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+```
+
+The RRF fusion effectively combines results while being resistant to outliers. We've found k1=60 works well as a starting point, but tune this based on your data.
+
+## Query Enhancement Pipeline
+
+### Query Rewriting
+
+Query rewriting transforms user questions into forms that better match your index. Here's a practical example:
+
+Original query: "laptop won't start"
+Rewritten queries:
+
+1. "laptop power issues troubleshooting"
+2. "computer not turning on solutions"
+3. "laptop boot problems diagnosis"
+
+Implementation:
+
+```python
+class QueryRewriter:
+    def rewrite(self, query):
+        expansion_prompt = f"""
+        Original query: {query}
+        Generate 3 alternative versions that capture the same intent
+        but use different terms or phrasings. Focus on:
+        1. Technical vs. common language
+        2. Symptom vs. solution oriented
+        3. Different but related terms
+
+        Format: Return only the queries, one per line
+        """
+
+        alternatives = self.llm.generate(expansion_prompt)
+        return [query] + alternatives.split('\n')
+```
+
+### Query Classification
+
+Query classification helps us adjust our search strategy based on the type of query. Here's a real-world example:
+
+```python
+class QueryClassifier:
+    def classify(self, query):
+        classification_prompt = f"""
+        Classify the query into one or more categories:
+        - EXACT_MATCH (contains specific IDs, SKUs, or unique names)
+        - CONCEPTUAL (requires understanding of concepts)
+        - TEMPORAL (time-sensitive information)
+        - COMPARATIVE (comparing multiple items)
+
+        Query: {query}
+        Return categories as comma-separated list.
+        """
+
+        categories = self.llm.generate(classification_prompt).split(',')
+        return {
+            'categories': categories,
+            'weights': self._get_weights(categories)
+        }
+
+    def _get_weights(self, categories):
+        """
+        Adjust search weights based on query type
+        """
+        weights = {'semantic': 0.5, 'full_text': 0.5}
+
+        if 'EXACT_MATCH' in categories:
+            weights['full_text'] = 0.8
+            weights['semantic'] = 0.2
+
+        return weights
+```
+
+## Result Processing Pipeline
+
+### Time-Based Relevance
+
+Content freshness matters. Here's how we implement time decay:
+
+```python
+class TimeAwareRanker:
+    def __init__(self, half_life_days=30):
+        self.half_life_days = half_life_days
+
+    def apply_time_decay(self, doc_score, doc_date):
+        """
+        Applies exponential decay based on document age
+        """
+        age_days = (datetime.now() - doc_date).days
+        decay = math.exp(-math.log(2) * age_days / self.half_life_days)
+        return doc_score * decay
+```
+
+### Metadata Filtering
+
+Implement metadata filtering early in the pipeline to respect access controls and content status:
+
+```python
+class MetadataFilter:
+    def filter_results(self, results, user_context):
+        """
+        Filters results based on metadata and user context
+        """
+        filtered = []
+        for doc in results:
+            if self._check_access(doc, user_context) and \
+               not doc.metadata.get('archived', False) and \
+               self._check_tier_access(doc, user_context['tier']):
+                filtered.append(doc)
+        return filtered
+
+    def _check_tier_access(self, doc, user_tier):
+        """
+        Checks if user's tier has access to the document
+        """
+        doc_tier = doc.metadata.get('required_tier', 'basic')
+        tier_levels = {
+            'basic': 0,
+            'premium': 1,
+            'enterprise': 2
+        }
+        return tier_levels[user_tier] >= tier_levels[doc_tier]
+```
+
+### LLM-Based Filtering
+
+Use an intermediate LLM to filter and refine search results:
+
+```python
+class ResultFilter:
+    def filter_results(self, query, results):
+        filter_prompt = f"""
+        Question: {query}
+
+        For each passage below, determine if it's relevant to answering
+        the question. Consider:
+        1. Direct relevance to the question
+        2. Required context or background information
+        3. Supporting or related information
+
+        Return only relevant passages, ordered by importance.
+
+        Passages:
+        {self._format_passages(results)}
+        """
+
+        filtered = self.llm.generate(filter_prompt)
+        return self._parse_filtered_results(filtered)
+```
+
+### Retrieved Knowledge Compression
+
+Compress retrieved content before sending to the main LLM:
+
+```python
+class KnowledgeCompressor:
+    def compress(self, query, passages):
+        compression_prompt = f"""
+        Question: {query}
+
+        Compress the following passages into a concise but complete context
+        for answering the question. Maintain all relevant facts but remove:
+        1. Redundant information
+        2. Unnecessary details
+        3. Tangential content
+
+        Passages:
+        {passages}
+        """
+
+        return self.llm.generate(compression_prompt)
+```
+
+## Production Considerations
+
+### Error Handling and Fallbacks
+
+Always implement fallbacks:
+
+```python
+class RobustRAG:
+    def get_response(self, query):
+        try:
+            # Try hybrid search first
+            results = self.hybrid_searcher.search(query)
+            if not results:
+                # Fallback to broader semantic search
+                results = self.vector_store.similarity_search(
+                    query,
+                    k=20  # Increase k for broader coverage
+                )
+
+            if not results:
+                return self._generate_no_context_response(query)
+
+            return self._generate_response(query, results)
+
+        except Exception as e:
+            logger.error(f"Error in RAG pipeline: {e}")
+            return self._generate_fallback_response(query)
+```
+
+### Monitoring and Logging
+
+Implement comprehensive monitoring:
+
+```python
+class RAGMonitor:
+    def log_interaction(self, query, results, response, metrics):
+        """
+        Log each interaction for monitoring and improvement
+        """
+        log_entry = {
+            'timestamp': datetime.now(),
+            'query': query,
+            'num_results': len(results),
+            'response_length': len(response),
+            'retrieval_latency': metrics['latency'],
+            'search_scores': self._extract_scores(results),
+            'token_usage': metrics['token_usage']
+        }
+
+        self.logger.info(json.dumps(log_entry))
+        self._update_metrics(metrics)
+```
+
+## Best Practices and Lessons Learned
+
+1. Start with good evaluation metrics before making changes
+2. Implement hybrid search early – it's easier than fixing semantic search
+3. Use query classification to dynamically adjust search strategy
+4. Don't ignore metadata and time-based relevance
+5. Monitor and log everything – you'll thank yourself later
+6. Implement robust error handling and fallbacks
+7. Consider maintenance and operational costs when adding complexity
+
+Remember that RAG is still evolving rapidly. What works today might be superseded by better approaches tomorrow. Keep experimenting, measuring, and improving.
+
+## Conclusion
+
+Building a production-grade RAG system is an iterative process. Start with good measurements, add capabilities incrementally, and always validate improvements with real data. The approaches described here have worked well in practice, but adapt them to your specific needs and constraints.
+
+Keep in mind that this field is moving quickly – stay updated with the latest developments and be ready to incorporate new techniques as they emerge.

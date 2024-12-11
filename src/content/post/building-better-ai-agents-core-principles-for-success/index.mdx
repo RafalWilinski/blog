@@ -1,0 +1,104 @@
+---
+title: "Building Better AI Agents: Core Principles"
+description: Definitive guide to building better AI agents driving business value.
+publishDate: "10 December 2024"
+tags: ["llm", "ai", "agents"]
+draft: true
+---
+
+## Understanding AI Agents
+
+What's an "AI Agent"?
+
+With all the hype, it's hard to cut through the noise.
+
+Here's the key distinction: a regular AI is like a single-track railway - input goes in, output comes out along a fixed path. An AI Agent is more like a driver who can navigate different routes, check conditions, and adjust the journey as needed thinking in a loop until task is done.
+
+Let's see this in action:
+
+Input: "Find the warmest EU capital today and email me about it"
+
+Here's how an Agent thinks and acts:
+
+1. First thought: "I need to be strategic about this. Let's focus on southern capitals that are typically warmest"
+   - Generates candidates: Madrid, Athens, Rome
+   - This will be more efficient than checking all 27 capitals
+2. Gathers Data:
+   - Makes Weather API call for Madrid ➜ 18°C
+   - Makes Weather API call for Athens ➜ 16°C
+   - Makes Weather API call for Rome ➜ 15°C
+   - "Let me verify these temperatures from another source to be sure"
+3. Analyzes Results:
+   - "Madrid is warmest at 18°C"
+   - "Should I check more capitals? No, given the significant difference and geographical knowledge"
+4. Takes Action:
+   - Composes informative email about Madrid's weather
+   - Uses Gmail API to send the message
+   - Verifies email delivery and exits the loop
+
+## Core Principles for Building Effective AI Agents
+
+### 1. Implement Feedback Loops
+
+The foundation of any effective AI agent is a robust feedback loop. Use compiled languages over interpreted ones - they provide immediate feedback through compiler errors and warnings before runtime, preventing potential issues before they occur. This creates a safety net that helps catch and correct mistakes early in the development process.
+
+### 2. Separate Planning from Execution
+
+One of the biggest challenges with AI agents is managing complex state workflows. Split your agent's operation into two distinct phases:
+
+- Planning: Where the agent determines its course of action
+- Execution: Where it carries out those actions
+
+This separation prevents the agent from getting lost in multi-state processes and makes the system more maintainable.
+
+### 3. Leverage Plan Reusability
+
+Don't reinvent the wheel for similar requests. When an agent encounters a familiar task:
+
+- Store successful plans in a database
+- Reuse them for similar future requests
+- Use past plans as examples when generating new ones
+  This approach not only saves computational resources but also ensures consistency in behavior.
+
+### 4. Incorporate Human Oversight
+
+AI agents often interact with real-world systems, making human supervision crucial. Implement checkpoints for:
+
+- Destructive actions
+- Operations with significant consequences
+- Complex decision-making processes
+  Let humans provide confirmation or denial before critical actions are executed.
+
+### 5. Embrace Specialized Sub-agents
+
+Rather than creating a jack-of-all-trades agent with numerous tools, break down functionality into specialized sub-agents:
+
+- Coding agents
+- Review agents
+- Financial agents
+- Task-specific agents
+
+This modular approach reduces complexity and improves reliability.
+
+### 6. Define Clear Scopes
+
+Agents perform best when given clearly defined, single-purpose tasks. Ensure each agent has:
+
+- Well-defined unit tests
+- Specific success criteria
+- Limited scope of responsibility
+
+### 7. Implement Strong Guardrails
+
+Use robust validation tools at every step:
+
+- TypeScript with Zod
+- Python with Instructor or Pedantic
+- Strict input/output validation
+  These guardrails prevent agents from straying outside their intended parameters and ensure reliable operation.
+
+## Conclusion
+
+Building effective AI agents requires careful attention to these core principles. By implementing feedback loops, separating concerns, and maintaining strict guardrails, we can create agents that are both powerful and reliable. Remember: the goal isn't to create the most feature-rich agent, but rather to build one that consistently delivers value within its defined scope.
+
+Remember to test thoroughly and start small - you can always expand an agent's capabilities over time as you verify its reliability in production environments.
