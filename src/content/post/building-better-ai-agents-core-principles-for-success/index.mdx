@@ -223,12 +223,15 @@ Similar example of "skill acquisition" is the [Voyager agent](https://arxiv.org/
 
 ### 4. Incorporate Human Oversight
 
-AI agents often interact with real-world systems, making human supervision crucial. Implement checkpoints for:
+AI agents often interact with real-world systems and even cause side-effects in real life, e.g. support bot issuing refunds. Depending on the nature of the agent, you might want to implement checkpoints for:
 
-- Destructive actions
-- Operations with significant consequences
-- Complex decision-making processes
-  Let humans provide confirmation or denial before critical actions are executed.
+- Destructive actions (e.g. deleting data)
+- Operations with significant consequences (large refunds, important emails, etc.)
+- Complex decision-making processes - let humans provide confirmation or denial before critical actions are executed. You may even allow for human to intervene and correct the agent's behavior.
+
+As you build up a dataset of successful and failed interactions between you and your agent, you can your own LLM-as-a-judge to gradually delegate more and more of the decision-making process to the agent.
+
+There's an excellent guide on this by [Eugene Yan - Evaluating the Effectiveness of LLM-Evaluators](https://eugeneyan.com/writing/llm-evaluators/#aligning-llm-evaluators-to-our-criteria)
 
 ### 5. Embrace Specialized Sub-agents
 
