@@ -6,13 +6,13 @@ tags: ["llm", "ai", "agents"]
 draft: true
 ---
 
-## Understanding AI Agents
-
 What's an "AI Agent"?
 
 With all the hype, it's hard to cut through the noise.
 
-Here's the key distinction: a regular AI is like a single-track railway - input goes in, output comes out along a fixed path. An AI Agent is more like a driver who can navigate different routes, check conditions, and adjust the journey as needed thinking in a loop until task is done.
+Here's the key distinction: a regular AI is like a _single-track railway - input goes in, output comes out along a fixed path_. An AI Agent is more like a driver who can navigate different routes, check conditions, and adjust the journey as needed. And doing so in a loop until task is done.
+
+![AI Agent](./what-is-agent.png)
 
 Let's see this in action:
 
@@ -20,6 +20,7 @@ Input: "Find the warmest EU capital today and email me about it"
 
 Here's how an Agent thinks and acts:
 
+```
 1. First thought: "I need to be strategic about this. Let's focus on southern capitals that are typically warmest"
    - Generates candidates: Madrid, Athens, Rome
    - This will be more efficient than checking all 27 capitals
@@ -35,30 +36,183 @@ Here's how an Agent thinks and acts:
    - Composes informative email about Madrid's weather
    - Uses Gmail API to send the message
    - Verifies email delivery and exits the loop
+```
+
+As you can imagine, this is a multi-step process and in these steps, each one can fail in different ways. It is crucial to design safeguards and feedback loops to ensure the agent can recover from failures and continue to deliver value.
 
 ## Core Principles for Building Effective AI Agents
 
 ### 1. Implement Feedback Loops
 
-The foundation of any effective AI agent is a robust feedback loop. Use compiled languages over interpreted ones - they provide immediate feedback through compiler errors and warnings before runtime, preventing potential issues before they occur. This creates a safety net that helps catch and correct mistakes early in the development process.
+The foundation of any effective AI agent is a robust feedback loop. Whenever things go wrong, the agent should be able to learn from the error and adjust its behavior.
+
+An example here is calling an API. If the API call fails, the agent should take the error response, feed it back into the context and try again having learned from the error.
+
+```ts
+// Pseudocode
+const { toolCall, finalResponse } = await agent.run(state);
+while (!finalResponse) {
+	const toolCallResponse = await toolCall.execute();
+	if (!toolCallResponse.ok) {
+		state.messages.push(`API call failed: ${toolCallResponse.error}`);
+	}
+}
+```
+
+Another example: ad-hoc code generation & execution.
+
+My suggestion here is to use compiled languages (Typescript) over interpreted ones (Python) - they provide immediate feedback through compiler errors and warnings before runtime, preventing potential issues before they occur. This is crucial for side-effecting operations like API calls, file uploads, etc. With interpreted languages, you risk transitioning to a broken state if an error occurs in the middle of a multi-step process.
+
+```typescript
+const twitterApi = { tweet: async (msg: string) => {} };
+const discordApi = { send: async (msg: string) => {} };
+
+const crossPostAnnouncement = async (message: string) => {
+	// First API succeeds - tweet is live
+	const tweetId = await twitterApi.tweet(message);
+
+	// Second API fails - there's no sendMessage method
+	// This gets caught by the compiler, code is rewritten
+	// to use the correct method name and ran afterwards
+	await discordApi.sendMessage(`${message} (Twitter: ${tweetId})`);
+};
+
+crossPostAnnouncement("Launch day!");
+```
+
+Where as in interpreted language:
+
+```python
+twitter_api = { "tweet": lambda x: None }
+discord_api = { "send": lambda x: None }
+
+def cross_post_announcement(message, twitter_api, discord_api):
+    # This succeeds, tweet goes live
+    tweet_id = twitter_api.tweet(message)
+
+    # This fails because there's no send_message method, only "send"
+    # The error is only detected at runtime after the tweet is live
+    # In the next loop iteration, the agent will try to send the message again
+    # To both Twitter and Discord creating duplicate tweets
+    discord_api.send_message(f"{message} (Twitter: {tweet_id})")
+
+cross_post_announcement("Launch day!")
+```
 
 ### 2. Separate Planning from Execution
 
-One of the biggest challenges with AI agents is managing complex state workflows. Split your agent's operation into two distinct phases:
+One of the biggest challenges with AI agents is managing complex state workflows. Research shows that LLMs perform best when focused on a single task at a time. When handling multi-step processes, an LLM's context can get polluted with execution details, leading to [Catastrophic Forgetting](https://arxiv.org/abs/2308.08747), especially when dealing with smaller models.
 
-- Planning: Where the agent determines its course of action
-- Execution: Where it carries out those actions
+Split your agent's operation into two distinct phases:
 
-This separation prevents the agent from getting lost in multi-state processes and makes the system more maintainable.
+- Planning: A high-level agent that:
+
+  - Breaks down complex tasks into smaller steps
+  - Creates an execution strategy
+  - Remains unaware of implementation details
+
+- Execution: A separate agent that:
+  - Follows the plan step by step
+  - Handles specific implementation details
+  - Doesn't need to understand the overall goal
+
+This separation prevents context pollution and keeps each component focused on its specific role. For example:
+
+```typescript
+interface Plan {
+	steps: Array<{
+		action: string;
+		params: Record<string, any>;
+	}>;
+}
+
+// Planner focuses on strategy
+// Only knows about the plan and the current plan progress
+// As reported by the executor(s)
+const planner = new Agent({
+	role: "Create a step-by-step plan without execution details",
+});
+
+// Executor focuses on implementation.
+// It's context can be polluted with lots of details
+const executor = new Agent({
+	role: "Execute individual steps without knowledge of overall goal",
+});
+
+const result = await planner.createPlan(task);
+await executor.executePlan(result.plan);
+```
+
+This approach significantly improves reliability and makes the system more maintainable. Additionally, it allows for using different models based on the task complexity - smaller, more cost-effective models can handle trivial execution steps while keeping the expensive, powerful models for high-level planning.
 
 ### 3. Leverage Plan Reusability
 
-Don't reinvent the wheel for similar requests. When an agent encounters a familiar task:
+Don't reinvent the wheel for similar requests. Most agent tasks are repetitive by nature - think data processing, content generation, or API interactions. The only thing that differs is the actual values that are flowing through the system. Having your LLM regenerate plans for similar tasks is:
 
-- Store successful plans in a database
-- Reuse them for similar future requests
-- Use past plans as examples when generating new ones
-  This approach not only saves computational resources but also ensures consistency in behavior.
+- Wasteful of compute resources
+- Potentially risky due to LLMs' probabilistic nature
+- Slower & more expensive than reusing proven plans
+
+Instead, implement a semantic caching system for planner:
+
+```typescript
+interface CachedPlan {
+	embedding: number[];
+	plan: Plan;
+	goal: string;
+}
+
+const planCache = {
+	async findSimilar(goal: string) {
+		const goalEmbedding = await embed(goal);
+		// Find the most similar goal in the cache
+		return vectorDb.query(goalEmbedding, { threshold: 0.95, feedback:  })[0];
+	},
+
+	async store(plan: Plan) {
+		await vectorDb.insert({
+			embedding: await embed(goal),
+			plan,
+		});
+	},
+};
+
+const agent = {
+	async planTask(userQuery: string) {
+		const proposedPlan = await llm.createPlan(userQuery);
+		const cached = await planCache.findSimilar(proposedPlan);
+		if (cached) return cached.plan;
+
+		await planCache.store(proposedPlan);
+		return proposedPlan;
+	},
+};
+```
+
+This approach:
+
+- Uses embeddings to find semantically similar plans
+- Reuses proven plans instead of regenerating them
+- Reduces latency and compute costs
+- Improves reliability by using verified solutions
+
+However, that comes with a several risks:
+
+- The ideal desired plan varies from the one that was cached in a very subtle way but leads to a different outcome
+- The context of the cached plan is polluted with details (e.g. IDs or variables) that are not relevant to the new goal
+- The stored plan might be even incorrect. This can be mitigated by gathering user's feedback and the outcome of the plan and flagging it accordingly
+
+If that's a risk you're not willing to take, you can serve as few-shot examples when generating new plans to reinforce good behavior:
+
+```ts
+const systemPrompt = `
+You are a planner agent. Your job is to create a plan for the user query.
+
+User query: ${query}
+
+Plans that worked in the past:
+${await db.getSuccessfulPlans(query)}`;
+```
 
 ### 4. Incorporate Human Oversight
 
@@ -80,22 +234,22 @@ Rather than creating a jack-of-all-trades agent with numerous tools, break down 
 
 This modular approach reduces complexity and improves reliability.
 
-### 6. Define Clear Scopes
-
-Agents perform best when given clearly defined, single-purpose tasks. Ensure each agent has:
-
-- Well-defined unit tests
-- Specific success criteria
-- Limited scope of responsibility
-
-### 7. Implement Strong Guardrails
+### 6. Implement Strong Guardrails
 
 Use robust validation tools at every step:
 
-- TypeScript with Zod
-- Python with Instructor or Pedantic
-- Strict input/output validation
-  These guardrails prevent agents from straying outside their intended parameters and ensure reliable operation.
+- Strict input/output validation: Python with Instructor or Pydantic, TypeScript with Zod. These guardrails prevent agents from straying outside their intended parameters and ensure reliable operation.
+- Limit the number of iterations and retries: If an agent is stuck in a loop, it's a good idea to limit the number of iterations to prevent infinite loops.
+
+### 7. Observability & monitoring.
+
+Define clear success criteria for each agent. Gather user feedback on the outcome of the agent's operation and flag it as correct or incorrect. This will help you understand if the agent is working as expected and build a dataset of successful and failed operations necessary for evals.
+
+### 8. Retrieval Augmented Generation (RAG)
+
+### 9. Security
+
+Don't give your agent wildcard access to your system. Instead, rely on the already existing authentication and authorization mechanisms. For instance, if your agent needs to be able to fetch users data, it shouldn't have access to the database directly. Instead, it should use the existing API make calls on users behalf using their identity to fetch the data. That will not only prevent the agent from accessing unauthorized data (cross tenant leaks) but also make the behavior space more bounded and predictable.
 
 ## Conclusion
 
