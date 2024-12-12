@@ -59,7 +59,7 @@ const { toolCall, finalResponse } = await agent.run(state);
 while (!finalResponse) {
 	const toolCallResponse = await toolCall.execute();
 	if (!toolCallResponse.ok) {
-		state.messages.push(`API call failed: ${toolCallResponse.error}`);
+		state.messages.push(`I need to retry. API call failed: ${toolCallResponse.error}`);
 	}
 }
 ```
@@ -252,19 +252,32 @@ Rather than creating a jack-of-all-trades agent with monstrous prompt and with n
 - Querying agents
 - Task-specific agents
 
-Why? Each tool is lengthy JSONSchema that is passed as a system prompt to the LLM. It costs money, it hurts the performance and can be hard to tune. Modular approach simplifies the system, like the planner-executor division. It also makes it easier to tune each agent independently without touching the rest of the system.
+Why? Each tool is lengthy `JSONSchema` that is passed as a system prompt to the LLM. It costs money, it hurts the performance and can be hard to tune. Modular approach simplifies the system, like in the planner-executor division each of the subagents have an independent, task-specific prompt which makes it easier to tune each piece independently without touching the rest of the system.
 
 ### 6. Implement Strong Guardrails
 
 Use robust validation tools at every step:
 
-- Strict input/output validation, especially for tool calls: Python with [Instructor](https://python.useinstructor.com/) or Pydantic, TypeScript with Zod (with is built-in into brilliant `ai` library). These guardrails prevent agents from straying outside their intended parameters and ensure reliable operation.
-- Limit the number of iterations and retries: If an agent is stuck in a loop, it's a good idea to limit the number of iterations to prevent infinite loops.
+- Strict input/output validation, especially for tool calls: Python with [Instructor](https://python.useinstructor.com/) or Pydantic, TypeScript with Zod (with is built-in into brilliant [`ai`](https://www.npmjs.com/package/ai) library). These guardrails prevent agents from straying outside their intended parameters and ensure reliable operation.
+- Limit the number of iterations and retries aka budget: If an agent is stuck in a loop, it's a good idea to limit the number of iterations to prevent infinite loops. Additionally, your agent shouldn't be able to call an API endpoint more than a few times or used as a DDoS vehicle.
 - Use a timeout for each step: If an agent is taking too long to complete a step, it's a good idea to timeout the step and move on to the next one.
+- Use [OpenAI's Moderation API](https://platform.openai.com/docs/guides/moderation/quickstart) to check both inputs and outputs of the agent for harmful content. This API is free to use and can prevent your agent from saying harmful things under your brand's name. The process of checking the input should be parallelized with the execution of the agent so it doesn't slow down the main execution loop.
 
 ### 7. Observability & monitoring.
 
-Define clear success criteria for each agent. Gather user feedback on the outcome of the agent's operation and flag it as correct or incorrect. This will help you understand if the agent is working as expected and build a dataset of successful and failed operations necessary for evals.
+Instrumentation is a must. And I'm not speaking about logging. You're going to get lost in a sea of logs and it's not going to help you. Instead, instrument your system with proper tools like [Braintrust](https://www.braintrust.com/), [Langfuse](https://langfuse.com/), [Langsmith](https://smith.langchain.com/) or [Humanloop](https://humanloop.com/).
+
+![Example LLM Agent Trace](./trace.png)
+
+> Example trace of Zapier Agent
+
+All of these tools will help you understand what your agent is doing (Tracing), how it's doing it (Scorers / Online Evaluators), how it's being used by your users (Surprise! Chances are that the use cases are going to be different than what you expected) and what's the outcome of its operation (Metrics).
+
+Gather user feedback on the outcome of the agent's operation and flag it as correct or incorrect. This will help you understand if the agent is working as expected and build a dataset of successful and failed operations necessary for evals. They will be essential for making prompt changes and improving the agent's behavior.
+
+![Evals in AI Development Workflow](./developer-workflow.webp)
+
+> Evals in AI Development Workflow (stolen from Braintrust's Docs)
 
 ### 8. Retrieval Augmented Generation (RAG)
 
