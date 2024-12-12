@@ -1,5 +1,5 @@
 ---
-title: "The Principles for More Reliable, Safer and Faster AI Agents"
+title: "The Principles for Reliable, Safe and Fast AI Agents"
 description: Definitive guide to building better AI agents driving business value.
 publishDate: "12 December 2024"
 tags: ["llm", "ai", "agents"]
@@ -235,7 +235,7 @@ Similar example of "skill acquisition" is the [Voyager agent](https://arxiv.org/
 
 ### 4. Incorporate Human Oversight
 
-AI agents often interact with real-world systems and even cause side-effects in real life, e.g. support bot issuing refunds. Depending on the nature of the agent, you might want to implement checkpoints for:
+AI agents often interact with real-world systems and even cause side-effects in real life, e.g. support bot issuing refunds. Depending on the nature of the agent, you might want to implement "Human in the Loop" for:
 
 - Destructive actions (e.g. deleting data)
 - Operations with significant consequences (large refunds, important emails, etc.)
@@ -243,7 +243,7 @@ AI agents often interact with real-world systems and even cause side-effects in 
 
 As you build up a dataset of successful and failed interactions between you and your agent, you can your own LLM-as-a-judge to gradually delegate more and more of the decision-making process to the agent.
 
-There's an excellent guide on this by [Eugene Yan - Evaluating the Effectiveness of LLM-Evaluators](https://eugeneyan.com/writing/llm-evaluators/#aligning-llm-evaluators-to-our-criteria)
+There's an excellent guide on aligning LLM-Evaluators to your criteria by [Eugene Yan - Evaluating the Effectiveness of LLM-Evaluators](https://eugeneyan.com/writing/llm-evaluators/#aligning-llm-evaluators-to-our-criteria)
 
 ### 5. Embrace Specialized Sub-agents
 
@@ -254,7 +254,9 @@ Rather than creating a jack-of-all-trades agent with monstrous prompt and with n
 - Querying agents
 - Task-specific agents
 
-Why? Each tool is lengthy `JSONSchema` that is passed as a system prompt to the LLM. It costs money, it hurts the performance and can be hard to tune. Modular approach simplifies the system, like in the planner-executor division each of the subagents have an independent, task-specific prompt which makes it easier to tune each piece independently without touching the rest of the system.
+Why? Each tool is lengthy `JSONSchema` that is passed as a system prompt to the LLM. It costs money, it hurts the performance and can be hard to tune. It will have much higher chance of success if finance-related question is handled by a finance agent instead of a general-purpose one that is polluted with a lot of irrelevant tools.
+
+Modular approach simplifies the system. Like in the planner-executor division each of the subagents have an independent, task-specific prompt which makes it easier to tune each piece independently without touching the rest of the system. Once again, instead of having one huge e2e eval, you can easily monitor & eval smaller parts of the system and iterate on them independently like in unit tests.
 
 ### 6. Implement Strong Guardrails
 
@@ -281,13 +283,25 @@ Gather user feedback on the outcome of the agent's operation and flag it as corr
 
 > Evals in AI Development Workflow (stolen from Braintrust's Docs)
 
-### 8. Retrieval Augmented Generation (RAG)
+### 8. Evals
 
-[RAG](/posts/make-your-rag-suck-less/) is a technique that allows agents to retrieve information from a database or external sources. Without your domain knowledge, your agent is going to be generic, with the access to the same information as any other agent. You data gives you the edge.
+<details>
+  <summary>Evals? What's that?</summary>
 
-Examples:
+> Evals are a way to evaluate the agent's behavior and make sure it's working as expected. A dry run. Think of tests but because of the probabilistic nature of LLMs, you need to run them a lot more times to get a sense of the system's behavior.
+> And you probably need a custom tool to grade the output, because often time it's unstructured so you cannot use classical assertions like `==` or `>`. Instead, you can compare the "Factuality" of the output to the expected outcome by leveraging other LLM or use "Semantic Similarity" to compare the output to the expected outcome based on the embedding distance between expected and actual output.
 
--
+</details>
+
+I would argue that evals in an AI system are even more important than tests in classical software engineering. In non-AI systems, there's often a finite number of behaviors that the system can exhibit. You can easily identify edge cases like negative numbers, invalid dates, empty strings, etc.
+
+With AI systems, there's an long tail of cases that can occur in the latent space - prompt injections, identity manipulation, complex queries, malformed input, malicious intents, bad prompting, the list goes on, not to mention that your system might simply fail to achieve the goal. The probability of failing to complete the task grows exponentially with the complexity of the system and the number of steps in the agent's operation.
+
+If `P(single_step_success)` = 0.95 (Quite high, right?), then for a chain of 10 steps where each step must succeed is `P(success) = 0.95^10 = 0.598`. Quite low, right?
+
+![Chaining Errors](./chaining-errors.png)
+
+That's why tuning your system is at the smallest part of the chain is so important. If you followed the previous principles, you should have a system that is easy to evaluate and tune.
 
 ### 9. Security
 
