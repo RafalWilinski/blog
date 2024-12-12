@@ -104,6 +104,8 @@ def cross_post_announcement(message, twitter_api, discord_api):
 cross_post_announcement("Launch day!")
 ```
 
+If you're planning to use arbitrary code execution, pay special attention to the security implications - you runtime should be sandboxed and isolated from the rest of the system either by using [E2B](https://e2b.dev/), [Firecracker](https://firecracker.dev/) or AWS Lambda with minimal permissions.
+
 ### 2. Separate Planning from Execution
 
 One of the biggest challenges with AI agents is managing complex state workflows. Research shows that LLMs perform best when focused on a single task at a time. When handling multi-step processes, an LLM's context can get polluted with execution details, leading to [Catastrophic Forgetting](https://arxiv.org/abs/2308.08747), especially when dealing with smaller models.
@@ -281,13 +283,34 @@ Gather user feedback on the outcome of the agent's operation and flag it as corr
 
 ### 8. Retrieval Augmented Generation (RAG)
 
-RAG is a technique that allows agents to retrieve information from a database or external sources.
+[RAG](/posts/make-your-rag-suck-less/) is a technique that allows agents to retrieve information from a database or external sources. Without your domain knowledge, your agent is going to be generic, with the access to the same information as any other agent. You data gives you the edge.
+
+Examples:
+
+-
 
 ### 9. Security
+
+There are more vectors of attack than in classical API. Your agent is not only going to be able to access your data but also execute code and make side-effects in your system. Possible combination of inputs is endless. Your system is never going to be 100% secure, but you can make it harder for the attacker to succeed.
+
+#### Authentication & Authorization
 
 Don't give your agent wildcard access to your system, that is a recipe for disaster. New jailbreaking techniques are being developed every day and it's only a matter of time before malicious actor will be able to exploit your agent, either by impersonating other users or accessing unauthorized data.
 
 Instead, rely on the already existing authentication and authorization mechanisms. For instance, if your agent needs to be able to fetch users data, it should use the existing API make calls on users behalf using their identity to fetch the data. That will not only prevent the agent from accessing unauthorized data (cross-tenant leaks) but also make the behavior space more bounded and predictable (using available API calls instead of crafting SQL queries).
+
+#### Sanitization
+
+Prompt injection is not the only problem here. You can use tools like [llm-guard](https://llm-guard.com/) to sanitize the input of the agent and prevent it from common prompt injection techniques.
+
+Another category of problems are e.g.:
+
+- Comparing your product / brand to a competition
+- Forcing your agent assist you in tasks that are not in its scope
+- Manipulating the agent to reveal implementation details or system architecture
+- Using the agent as a proxy for automated spam or abuse
+
+You system should be able to detect these patterns and reject them.
 
 ## Conclusion
 
