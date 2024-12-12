@@ -7,7 +7,7 @@ tags: ["llm", "ai", "agents"]
 
 Building AI agents is **hard**. Most attempts end up with brittle systems that break in production, cost too much to run, or worse - make costly mistakes that could have been prevented.
 
-Fortunately, there are several core principles that I've learned while building agents that actually work.
+Fortunately, there are several core principles that I've learned while building agents at [Zapier](https://zapier.com) and [Vendr](https://vendr.com) that actually work.
 
 ---
 
@@ -120,6 +120,7 @@ Split your agent's operation into two distinct phases:
   - Follows the plan step by step
   - Handles specific implementation details
   - Doesn't need to understand the overall goal
+  - Can be executed per step so each step can be evaluated independently
 
 This separation prevents context pollution (imagine executor dealing with huge API responses or repeated errors) and keeps each component focused on its specific role. For example:
 
@@ -144,8 +145,11 @@ const executor = new Agent({
 	role: "Execute individual steps without knowledge of overall goal",
 });
 
-const result = await planner.createPlan(task);
-await executor.executePlan(result.plan);
+const plan = await planner.createPlan(task);
+for (const step of plan.steps) {
+	const result = await executor.executeStep(step, state);
+	state.trace.push(result.message);
+}
 ```
 
 This approach significantly improves reliability and makes the system more maintainable.
@@ -173,11 +177,11 @@ interface CachedPlan {
 	goal: string;
 }
 
-const planCache = {
+const semanticPlanCache = {
 	async findSimilar(goal: string) {
 		const goalEmbedding = await embed(goal);
 		// Find the most similar goal in the cache
-		return vectorDb.query(goalEmbedding, { threshold: 0.95, feedback:  })[0];
+		return vectorDb.query(goalEmbedding, { threshold: 0.95 })[0];
 	},
 
 	async store(plan: Plan) {
@@ -191,7 +195,7 @@ const planCache = {
 const agent = {
 	async planTask(userQuery: string) {
 		const proposedPlan = await llm.createPlan(userQuery);
-		const cached = await planCache.findSimilar(proposedPlan);
+		const cached = await semanticPlanCache.findSimilar(proposedPlan);
 		if (cached) return cached.plan;
 
 		await planCache.store(proposedPlan);
@@ -248,14 +252,15 @@ Rather than creating a jack-of-all-trades agent with monstrous prompt and with n
 - Querying agents
 - Task-specific agents
 
-This modular approach reduces like the planner-executor division, reduces the complexity of your system and improves reliability. It also makes it easier to tune each agent independently without touching the rest of the system.
+Why? Each tool is lengthy JSONSchema that is passed as a system prompt to the LLM. It costs money, it hurts the performance and can be hard to tune. Modular approach simplifies the system, like the planner-executor division. It also makes it easier to tune each agent independently without touching the rest of the system.
 
 ### 6. Implement Strong Guardrails
 
 Use robust validation tools at every step:
 
-- Strict input/output validation: Python with Instructor or Pydantic, TypeScript with Zod. These guardrails prevent agents from straying outside their intended parameters and ensure reliable operation.
+- Strict input/output validation, especially for tool calls: Python with [Instructor](https://python.useinstructor.com/) or Pydantic, TypeScript with Zod (with is built-in into brilliant `ai` library). These guardrails prevent agents from straying outside their intended parameters and ensure reliable operation.
 - Limit the number of iterations and retries: If an agent is stuck in a loop, it's a good idea to limit the number of iterations to prevent infinite loops.
+- Use a timeout for each step: If an agent is taking too long to complete a step, it's a good idea to timeout the step and move on to the next one.
 
 ### 7. Observability & monitoring.
 
