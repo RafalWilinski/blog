@@ -3,7 +3,6 @@ import type { GetStaticPaths, Page } from "astro";
 import type { CollectionEntry } from "astro:content";
 
 import PageLayout from "@/layouts/Base.astro";
-import PostPreview from "@/components/blog/PostPreview.astro";
 import { getAllPosts, sortMDByDate } from "@/data/post";
 
 export const getStaticPaths = (async ({ paginate }) => {
