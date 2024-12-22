@@ -29,13 +29,13 @@ Here's the thing about AI agents: the obvious use cases are just the tip of the 
 
 ![Long Tail of Edge Cases](./iceberg_of_cases.png)
 
-Your users will find these edge cases. It's not a question of if, but when. And each one of these cases can be the difference between an agent that's genuinely helpful and one that's frustratingly unreliable.
+Your users will find these edge cases. It's not a question of if, but when. And each one of these cases can be the difference between an agent that's genuinely helpful and one that's frustratingly unreliable. How to find them before your app goes live?
 
 ## Why Synthetic Data Testing Matters
 
 Think of synthetic data testing as your agent's flight simulator. Pilots don't learn to fly by taking off with passengers - they practice with simulators first. Your agent needs the same treatment.
 
-Synthetic data is artificially generated data that mimics real-world scenarios. The beauty? You can create thousands of test cases covering every edge case you can imagine, without waiting for real user data.
+Synthetic data is artificially generated data that mimics real-world scenarios. The beauty? You can create thousands of test cases covering every edge case you can imagine, without waiting for real user data. But how do you generate these tests?
 
 ## Your Secret Weapon: LLMs as Test Generators
 
@@ -63,6 +63,7 @@ Generate scenarios that test your agent's core capabilities:
 - Complex multi-step processes
 - Tasks requiring error recovery
 - Edge cases with ambiguous instructions
+- Cases that cannot be completed
 
 ### 2. Safety and Boundaries
 
@@ -80,7 +81,8 @@ Simulate diverse user behaviors:
 - Clear vs. ambiguous instructions
 - Multiple requests in one prompt
 - Contradictory follow-up requests
-- Different communication styles
+- Different communication styles and languages
+- Using internal / domain specific lingo
 
 ## Creating Effective Test Scenarios
 
@@ -94,13 +96,17 @@ Start with your agent's core purpose. If it's meant to analyze financial data, y
 
 ## Red Flags to Watch For
 
-Your synthetic testing should expose:
+If created correctly, your synthetic testing should expose:
 
 - Hallucination of capabilities
 - Incorrect task sequencing
 - Security boundary violations
 - Failure to ask for clarification
 - Incomplete task execution
+- Unsafe / inappropriate responses
+- Inability to handle complex tasks
+
+From that point, you can start to improve your agent and constantly iterate on it.
 
 ## The Bottom Line
 
@@ -115,6 +121,4 @@ But don't stop there. Evals aren't a one-and-done deal – they're a critical co
 
 Think of evals as your AI's continuous health monitor. They're not just for launch readiness; they're your safety net for every iteration, every update, and every improvement.
 
-Remember: A well-tested agent is a trustworthy agent. And in the world of AI, trust is everything.
-
-Pro Tip: As users come up with new ways to use (and break) your agent, feed those patterns back into your synthetic data generation. Your eval suite should grow smarter as your users grow more creative.
+As users come up with new ways to use (and break) your agent, feed those patterns back into your synthetic data generation. Your eval suite should grow smarter as your users grow more creative. Because of that, your target metric of success might go down as you expand your testing. I'd argue, that ideally this should hover around 70%-80% success rate. If it is over 80%, you're not testing enough, you're simply a victim of [Goodhart's Law](https://en.wikipedia.org/wiki/Goodhart%27s_law). But don't sweat about number going down. Metrics not always tell the truth. Even if it goes down, you're still making your agent better.
