@@ -11,8 +11,8 @@ import {
 import * as Slider from "@radix-ui/react-slider";
 
 const LLMParallelProcessing = () => {
-	const [baseCost, setBaseCost] = useState(1);
-	const [schemaCost, setSchemaCost] = useState(1);
+	const [baseCost, setBaseCost] = useState<number>(1);
+	const [schemaCost, setSchemaCost] = useState<number>(1);
 	const [data, setData] = useState([]);
 
 	useEffect(() => {
@@ -29,7 +29,7 @@ const LLMParallelProcessing = () => {
 					efficiency: efficiency,
 				});
 			}
-			setData(newData);
+			setData(newData as any);
 		};
 
 		generateData();
@@ -47,7 +47,7 @@ const LLMParallelProcessing = () => {
 					max={5}
 					min={0.1}
 					step={0.1}
-					onValueChange={(values) => setBaseCost(values[0])}
+					onValueChange={(values) => setBaseCost(values[0]!)}
 				>
 					<Slider.Track className="relative h-1 grow rounded-full bg-gray-200">
 						<Slider.Range className="absolute h-full rounded-full bg-blue-500" />
@@ -69,7 +69,7 @@ const LLMParallelProcessing = () => {
 					max={5}
 					min={0.1}
 					step={0.1}
-					onValueChange={(values) => setSchemaCost(values[0])}
+					onValueChange={(values) => setSchemaCost(values[0]!)}
 				>
 					<Slider.Track className="relative h-1 grow rounded-full bg-gray-200">
 						<Slider.Range className="absolute h-full rounded-full bg-blue-500" />

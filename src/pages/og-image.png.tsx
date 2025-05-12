@@ -43,7 +43,7 @@ const markup = (title: string) =>
 export async function GET(context: APIContext) {
 	console.log(context.request.url);
 
-	const svg = await satori(markup("LLMs, RAGs, Agents and Applied AI"), ogOptions);
+	const svg = await satori(markup("LLMs, RAGs, Agents and Applied AI") as any, ogOptions);
 	const png = new Resvg(svg).render().asPng();
 	return new Response(png, {
 		headers: {
