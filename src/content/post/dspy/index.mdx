@@ -5,6 +5,18 @@ publishDate: "23 May 2025"
 tags: ["llm", "ai", "evals", "dspy"]
 ---
 
-> We're missing (at least one) major paradigm for LLM learning. Not sure what to call it, possibly it has a name - system prompt learning?
+Prompt engineering is feeling like hand-tuning CSS in the IE6 era—lots of tribal knowledge, trial & error, precious little feedback loop. Am I really supposed to play with strings in order to maximize perfomance? It doesn't feel right - we're living in AI-age yet working at the frontier of AI still feels like stone age.
 
-~ [Andrej Karpathy] (https://x.com/karpathy/status/1921368644069765486)
+Enter DSPy: Stanford’s framework that treats prompts as differentiable programs you can compile, profile and automatically improve. Sounds promising, right?
+
+Here's one problem - DSPy is written in Python. I _hate_ Python. All code I and my team writes is in Typescript. But I really want to try this approach. So, I decided to recreate it from scratch to learn how it works.
+
+In this post we’ll build a mini-DSPy-ish “MiPRO-lite” optimiser in just ~250 lines of TypeScript—enough to squeeze extra accuracy out of any single-prompt task without drowning in abstractions.
+
+Disclaimer -- this is greatly simplified version of DSPy's MIPRO v2. We will not:
+
+- Write a program that optimizes multiple prompts at once. We keep it simple, one prompt at a time.
+- Our search space is limited to a few simple prompt modifications plus choosing the best few-shot examples
+- For the optimizer, we'll not employ Bayesian Optimization, we'll use simplified UCB (Upper Confidence Bound) bandit
+
+If you're not sure any of all that means, don't worry. I also didn't a week ago.
