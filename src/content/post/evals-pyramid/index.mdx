@@ -5,6 +5,18 @@ publishDate: "7 June 2025"
 tags: ["llm", "ai", "evals"]
 ---
 
+> The following blogpost is co-created with my dear friend [@vitorbal](https://x.com/vitorbal). We presented this blogpost as a part of AI Engineer World's Fair 2025. You can watch it below:
+
+<iframe
+	width="560"
+	height="315"
+	src="https://www.youtube.com/embed/Vqsfn9rWXR8?start=1820"
+	title="YouTube video player"
+	frameBorder="0"
+	allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+	allowFullScreen
+></iframe>
+
 Building good AI agents is hard. Building evaluations for them? Even harder.
 
 Most companies are doing it backwards: prototype → vibes-based flashy demo → ship to users → profit 💸. Spoiler alert: this fails spectacularly in production.
@@ -31,18 +43,18 @@ These are your bread and butter: `State + LLM(state) ⇒ Output`. Just assertion
 
 ```typescript
 interface AgentOutput {
-  toolCalls: Record<string, any>;
-  finalState: any;
+	toolCalls: Record<string, any>;
+	finalState: any;
 }
 
 function testCalendarIntegration(): void {
-  const state = createTestState({
-    userRequest: "Schedule meeting with John",
-  });
-  const output: AgentOutput = agent.run(state);
+	const state = createTestState({
+		userRequest: "Schedule meeting with John",
+	});
+	const output: AgentOutput = agent.run(state);
 
-  assert(output.toolCalls.hasOwnProperty("calendar"));
-  assert(output.toolCalls.calendar.attendees.includes("john@example.com"));
+	assert(output.toolCalls.hasOwnProperty("calendar"));
+	assert(output.toolCalls.calendar.attendees.includes("john@example.com"));
 }
 ```
 
@@ -64,87 +76,79 @@ Instead of grading one loop iteration, trajectory evals grade the entire workflo
 
 ```typescript
 interface ToolCall {
-  name: string;
-  parameters: any;
-  result: any;
+	name: string;
+	parameters: any;
+	result: any;
 }
 
 interface WorkflowTrace {
-  toolCalls: ToolCall[];
-  finalMessage: string;
-  completed: boolean;
+	toolCalls: ToolCall[];
+	finalMessage: string;
+	completed: boolean;
 }
 
-async function runPersonalizedEmailAgent(
-  prospectEmail: string
-): Promise<WorkflowTrace> {
-  const trace: WorkflowTrace = {
-    toolCalls: [],
-    finalMessage: "",
-    completed: false,
-  };
+async function runPersonalizedEmailAgent(prospectEmail: string): Promise<WorkflowTrace> {
+	const trace: WorkflowTrace = {
+		toolCalls: [],
+		finalMessage: "",
+		completed: false,
+	};
 
-  let state = { prospectEmail, context: "" };
+	let state = { prospectEmail, context: "" };
 
-  // Agent runs in a loop until it decides it's done
-  while (!trace.completed) {
-    const decision = await llm.decide(state);
+	// Agent runs in a loop until it decides it's done
+	while (!trace.completed) {
+		const decision = await llm.decide(state);
 
-    if (decision.action === "scrape_linkedin") {
-      const result = await scrapeLinkedIn(state.prospectEmail);
-      trace.toolCalls.push({
-        name: "scrape_linkedin",
-        parameters: { email: state.prospectEmail },
-        result: result,
-      });
-      state.context += result.profile;
-    }
+		if (decision.action === "scrape_linkedin") {
+			const result = await scrapeLinkedIn(state.prospectEmail);
+			trace.toolCalls.push({
+				name: "scrape_linkedin",
+				parameters: { email: state.prospectEmail },
+				result: result,
+			});
+			state.context += result.profile;
+		}
 
-    if (decision.action === "google_search") {
-      const result = await googleSearch(`${state.prospectEmail} company news`);
-      trace.toolCalls.push({
-        name: "google_search",
-        parameters: { query: `${state.prospectEmail} company news` },
-        result: result,
-      });
-      state.context += result.snippets;
-    }
+		if (decision.action === "google_search") {
+			const result = await googleSearch(`${state.prospectEmail} company news`);
+			trace.toolCalls.push({
+				name: "google_search",
+				parameters: { query: `${state.prospectEmail} company news` },
+				result: result,
+			});
+			state.context += result.snippets;
+		}
 
-    if (decision.action === "draft_email") {
-      const email = await llm.generateEmail(state.context);
-      trace.finalMessage = email;
-      trace.completed = true;
-    }
-  }
+		if (decision.action === "draft_email") {
+			const email = await llm.generateEmail(state.context);
+			trace.finalMessage = email;
+			trace.completed = true;
+		}
+	}
 
-  return trace;
+	return trace;
 }
 ```
 
 Now you can evaluate the entire trajectory:
 
 ```typescript
-function evaluatePersonalizedEmailTrajectory(
-  trace: WorkflowTrace
-): EvaluationResult {
-  // Dumb assertions work great here
-  const scrapedLinkedIn = trace.toolCalls.some(
-    (call) => call.name === "scrape_linkedin"
-  );
-  const googledProspect = trace.toolCalls.some(
-    (call) =>
-      call.name === "google_search" &&
-      call.parameters.query.includes("company news")
-  );
-  const sentEmail = trace.finalMessage.length > 0;
-  const reasonableLength = trace.toolCalls.length <= 10; // didn't go crazy
+function evaluatePersonalizedEmailTrajectory(trace: WorkflowTrace): EvaluationResult {
+	// Dumb assertions work great here
+	const scrapedLinkedIn = trace.toolCalls.some((call) => call.name === "scrape_linkedin");
+	const googledProspect = trace.toolCalls.some(
+		(call) => call.name === "google_search" && call.parameters.query.includes("company news"),
+	);
+	const sentEmail = trace.finalMessage.length > 0;
+	const reasonableLength = trace.toolCalls.length <= 10; // didn't go crazy
 
-  return {
-    completedResearch: scrapedLinkedIn && googledProspect,
-    generatedOutput: sentEmail,
-    efficiency: reasonableLength,
-    overallSuccess: scrapedLinkedIn && googledProspect && sentEmail,
-  };
+	return {
+		completedResearch: scrapedLinkedIn && googledProspect,
+		generatedOutput: sentEmail,
+		efficiency: reasonableLength,
+		overallSuccess: scrapedLinkedIn && googledProspect && sentEmail,
+	};
 }
 ```
 
@@ -154,14 +158,14 @@ function evaluatePersonalizedEmailTrajectory(
 
 ```typescript
 interface RubricCriteria {
-  description: string;
-  prompt: string;
+	description: string;
+	prompt: string;
 }
 
 const personalizedEmailRubrics: RubricCriteria[] = [
-  {
-    description: "Agent gathered personal information before drafting",
-    prompt: `
+	{
+		description: "Agent gathered personal information before drafting",
+		prompt: `
     Look at this workflow trace. Did the agent research the prospect 
     (via LinkedIn scraping or Google search) BEFORE drafting the email? 
     
@@ -169,10 +173,10 @@ const personalizedEmailRubrics: RubricCriteria[] = [
     
     Answer with just "YES" or "NO" and brief reasoning.
     `,
-  },
-  {
-    description: "Agent recovered from API failures gracefully",
-    prompt: `
+	},
+	{
+		description: "Agent recovered from API failures gracefully",
+		prompt: `
     Examine this trace for any API errors or failures. If there were failures,
     did the agent attempt to retry or find alternative approaches?
     
@@ -180,10 +184,10 @@ const personalizedEmailRubrics: RubricCriteria[] = [
     
     Answer with just "YES" or "NO" and brief reasoning.
     `,
-  },
-  {
-    description: "Final email incorporates specific research findings",
-    prompt: `
+	},
+	{
+		description: "Final email incorporates specific research findings",
+		prompt: `
     Compare the research data gathered with the final email content.
     Does the email reference specific details found during research?
     
@@ -192,25 +196,25 @@ const personalizedEmailRubrics: RubricCriteria[] = [
     
     Answer with just "YES" or "NO" and brief reasoning.
     `,
-  },
+	},
 ];
 
 async function evaluateWithRubrics(
-  trace: WorkflowTrace,
-  rubrics: RubricCriteria[]
+	trace: WorkflowTrace,
+	rubrics: RubricCriteria[],
 ): Promise<RubricResult[]> {
-  const results = [];
+	const results = [];
 
-  for (const rubric of rubrics) {
-    const response = await llm.evaluate(rubric.prompt);
-    results.push({
-      criteria: rubric.description,
-      passed: response.includes("YES"),
-      reasoning: response,
-    });
-  }
+	for (const rubric of rubrics) {
+		const response = await llm.evaluate(rubric.prompt);
+		results.push({
+			criteria: rubric.description,
+			passed: response.includes("YES"),
+			reasoning: response,
+		});
+	}
 
-  return results;
+	return results;
 }
 ```
 
