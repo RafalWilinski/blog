@@ -27,11 +27,7 @@ The real secret isn't avoiding failures. It's gathering data from every failure,
 
 Just like the testing pyramid in traditional software development (unit tests at the base, integration tests in the middle, E2E tests at the top), AI agent evaluations need a similar hierarchy. Each layer serves a different purpose and operates at a different speed and cost.
 
-```
-        A/B Testing
-      Trajectory Evals
-   Unit-Test Like Evals
-```
+![Pyramid of Evals](./pyramid.png)
 
 Think of it as **impact vs. difficulty vs. confidence**. The base is fast and high-volume but limited in scope. The peak is slow and expensive but captures real user satisfaction. Each layer complements the others, and you can't skip straight to the top.
 
