@@ -71,6 +71,8 @@ Why? Here's the kicker: we had gathered most of our evaluation data using Claude
 Instead of grading one loop iteration, trajectory evals grade the entire workflow execution. Let's look at a practical example: an agent that drafts personalized emails to prospects.
 
 ```typescript
+import { generateObject } from "ai";
+
 interface ToolCall {
 	name: string;
 	parameters: any;
@@ -94,7 +96,7 @@ async function runPersonalizedEmailAgent(prospectEmail: string): Promise<Workflo
 
 	// Agent runs in a loop until it decides it's done
 	while (!trace.completed) {
-		const decision = await llm.decide(state);
+		const decision = await generateObject(state);
 
 		if (decision.action === "scrape_linkedin") {
 			const result = await scrapeLinkedIn(state.prospectEmail);
@@ -214,19 +216,27 @@ async function evaluateWithRubrics(
 }
 ```
 
-**The side-effects problem is real.** Your test agent will actually scrape LinkedIn, hit Google's API, and potentially send emails. Read operations might be mostly innocent (though they can hit rate limits and cost money), but write operations like sending emails can be disastrous. Imagine your test suite accidentally spamming your entire customer base.
+### The side-effects problem is real
 
-**Option 1: Full mocking.** Mock all external services. Fast, safe, predictable. But mocks are liars - they'll happily accept malformed parameters that would fail in the real world, giving you false confidence. Real APIs return complex error states, rate limits, and edge cases that mocks rarely capture.
+Your test agent will actually scrape LinkedIn, hit Google's API, and potentially send emails. Read operations might be mostly innocent (though they can hit rate limits and cost money), but write operations like sending emails can be disastrous. Imagine your test suite accidentally spamming your entire customer base. How we can solve this?
 
-**Option 2: LLM-simulated mocks.** Given that we know input and output formats, we can use LLMs to simulate what a real environment _could_ return with some hints about the expected behavior. This is more realistic than static mocks but introduces its own problems - LLMs can hallucinate realistic-looking but completely wrong API responses.
+### Option 1: Full mocking
 
-**Our approach: precisely scoped synthetic environments.** This is very time-consuming but the most truthful approach. We don't maintain fake APIs - we maintain fake identities that use real APIs. For Gmail integration, we create test Gmail accounts with known email histories, contacts, and folder structures. The API calls are real, the responses are real, but the data is controlled and disposable.
+Mock all external services. Fast, safe, predictable. But mocks are liars - they'll happily accept malformed parameters that would fail in the real world, giving you false confidence. Real APIs return complex error states, rate limits, and edge cases that mocks rarely capture.
+
+### Option 2: LLM-simulated mocks
+
+Given that we know input and output formats, we can use LLMs to simulate what a real environment _could_ return with some hints about the expected behavior. This is more realistic than static mocks but introduces its own problems - LLMs can hallucinate realistic-looking but completely wrong API responses.
+
+### Our approach: precisely scoped synthetic environments
+
+This is very time-consuming but the most truthful approach. We don't maintain fake APIs - we maintain fake identities that use real APIs. For Gmail integration, we create test Gmail accounts with known email histories, contacts, and folder structures. The API calls are real, the responses are real, but the data is controlled and disposable.
 
 This gives us realistic tool outputs (real HTML structures, real API response formats, real error conditions) while keeping tests safe and repeatable. It's significant upfront work but gives you the highest confidence that your evals reflect real-world behavior.
 
 **The trade-offs:** Higher ROI than unit-test like evals, but harder to set up. They're slower and more expensive to run, but they catch issues that unit tests miss.
 
-## Advanced Patterns and Pitfalls
+### Advanced Patterns and Pitfalls
 
 **LLM-as-a-judge alignment is crucial.** Making sure the judge is judging what you actually want it to judge is hard—you need to align it first. Check out [aligneval.com](https://aligneval.com) for practical guidance.
 
@@ -242,13 +252,13 @@ This gives us realistic tool outputs (real HTML structures, real API response fo
 
 **A/B testing is the ultimate eval.** Your goal isn't to maximize some imaginary score in a lab-like setting. Your goal is to deliver a working product and maximize user satisfaction. After all, users are your most important "scorers."
 
-**100% pass rate is foolish.** It doesn't mean your agent is great. We don't have AGI yet. It means your dataset for evals is bad or uninteresting. Your evals score should make you feel embarrassed, not proud. If you're hitting perfect scores, you're not pushing boundaries hard enough.
+### Goodhart's Law strikes again
 
-A/B tests can catch much more subtle changes than evals. Remember when ChatGPT became a sycophant after some update? Your evals are targeted at measuring only the things you explicitly want to measure, but there's a plethora of factors you might not be accounting for when making a seemingly innocent change. Plus, LLMs are sometimes not capable of assessing the vibes. And vibes are super important.
+When a metric becomes a target, it ceases to be a good metric. **100% pass rate is foolish.** It doesn't mean your agent is great. We don't have AGI yet. It means your dataset for evals is bad or uninteresting. Your evals score should make you feel embarrassed, not proud. If you're hitting perfect scores, you're not pushing boundaries hard enough.
+
+A/B tests can catch much more subtle changes than evals. Remember when [ChatGPT became a sycophant](https://openai.com/index/sycophancy-in-gpt-4o/) after some update? Your evals are targeted at measuring only the things you explicitly want to measure, but there's a plethora of factors you might not be accounting for when making a seemingly innocent change. Plus, LLMs are sometimes not capable of assessing the vibes. And vibes are super important.
 
 Models scoring lower on your carefully crafted evals can be better received by users. Real-world traffic beats synthetic every time. The most sophisticated eval in the world can't capture the full complexity of user intent, edge cases, and the subjective experience of "this feels right."
-
-Goodhart's Law strikes again: when a metric becomes a target, it ceases to be a good metric. We maintain two datasets: a "regressions dataset" for things that should never break, and a "hard dataset" (our "aspirational" set) for pushing boundaries.
 
 **The pyramid in practice:** Start with unit-test like evals for quick iteration cycles. Graduate to trajectory evals for workflow confidence. Validate everything with real users through A/B tests. Each layer informs the others. Failures at the top become test cases for the bottom.
 
