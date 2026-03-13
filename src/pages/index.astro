@@ -44,12 +44,17 @@ const cactusTech: { desc: string; href: string; stars?: string; title: string }[
 	},
 ];
 
-const history: { dates: string; desc: string; href: string; title: string }[] = [
+const history: { dates: string; desc: string; href?: string; title: string }[] = [
 	{
-		dates: "2024 - Currently",
-		desc: "Building AI solutions for Zapier's AI platform.",
-		href: "https://zapier.com/central",
-		title: "Senior AI Engineer @ Zapier",
+		dates: "Sep 2025 - Currently",
+		desc: "Founding engineer building at Runlayer.",
+		title: "Founding Engineer @ Runlayer",
+	},
+	{
+		dates: "2024 - Sep 2025",
+		desc: "Tech Lead for Zapier Agents.",
+		href: "https://zapier.com/agents",
+		title: "Tech Lead @ Zapier",
 	},
 	{
 		dates: "2022 - 2024",
@@ -90,9 +95,10 @@ const history: { dates: string; desc: string; href: string; title: string }[] = 
 			Independent AI Consultant - LLMs, RAGs, AI Agents
 			<br />
 			<br />
-			Currently: AI Tech Lead at <a class="cactus-link" href="https://central.zapier.com/"
+			Currently: Founding Engineer @ Runlayer.
+			Previously: Tech Lead for <a class="cactus-link" href="https://zapier.com/agents"
 				>Zapier Agents</a
-			>. Ex-AI Tech Lead at <a class="cactus-link" href="https://vendr.com/">Vendr</a>
+			>, and ex-AI Tech Lead at <a class="cactus-link" href="https://vendr.com/">Vendr</a>
 			<br />
 			Creator of
 			<a class="cactus-link" href="https://dynobase.dev/">Dynobase</a>.
@@ -122,9 +128,13 @@ const history: { dates: string; desc: string; href: string; title: string }[] = 
 						<div class="flex flex-col gap-1 sm:flex-row">
 							<dt>
 								<span class="flex">
-									<a class="cactus-link" href={href} rel="noopener noreferrer" target="_blank">
-										{title}
-									</a>
+									{href ? (
+										<a class="cactus-link" href={href} rel="noopener noreferrer" target="_blank">
+											{title}
+										</a>
+									) : (
+										<span>{title}</span>
+									)}
 									-{"   "}
 								</span>
 							</dt>
