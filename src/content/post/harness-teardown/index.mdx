@@ -1,0 +1,396 @@
+---
+title: "Three harnesses, one window: context in Codex, Claude Code and pi"
+description: "A source-level teardown of how Codex, Claude Code and pi manage the context window: triggers, compaction, caching and tool output."
+publishDate: "9 November 2026"
+tags: ["ai", "agents", "llm", "context-engineering"]
+---
+
+import TD from "@/components/teardown/TD.astro";
+import TDScript from "@/components/teardown/TDScript.astro";
+
+Codex, Claude Code and pi all face the same budget: a fixed number of tokens per request, and a session that wants more. They spend it differently. This is a parts-level reading of how, from source code and a shipped binary, with the constants that actually ship.
+
+*November 2026 · Codex `748ab55` · pi-mono `5ea81d2` · Claude Code 2.1.317, constants re-checked on 2.1.319*
+
+<TD id="gauge" />
+
+A coding agent's context window fills up. Every harness answers with the same four moves: cap what tools return, summarize the history when it gets long, keep the start of the prompt unchanged so the cache holds, and write the session to disk. All three subjects here do all four. On a 200K window their compaction alarms even go off within 17,000 tokens of each other, as the scale above shows.
+
+The differences are in what each one trusts to hold the state that no longer fits.
+
+<TD id="creeds" />
+
+### What the reading turned up
+
+1. **When a harness compacts matters less than what it keeps.** The triggers are close. What survives is not: recent user messages only (Codex), a short tail plus files re-read from disk (Claude Code), or a 20,000-token tail of everything (pi).
+2. **One trigger is a fraction and two are fixed reserves**, so they drift apart as windows grow. On a 1M window Codex compacts at 900,000 tokens and pi at 983,616.
+3. **All three append and never edit.** New tools, new servers and changed instructions arrive as later messages, so the cached prefix survives. Compaction is the one deliberate exception.
+4. **pi's cache warming almost never fires while you're away.** By its own formula, at $3 per million input tokens and a 5-minute cache, a refresh pays only above roughly 230K tokens of context.
+5. **How tool output is cut may decide how often compaction runs.** In the model at the end of this page, Claude Code compacts about half as often as the other two. That result rests on assumptions that favor it, stated there, and has not been measured.
+
+### How to read the figures
+
+Thresholds, caps, prompts and formulas are quoted from source or from the binary, and tagged: <span class="td-ev">src</span> read in source code, <span class="td-ev">bin</span> found in the shipped binary, <span class="td-ev">docs</span> stated in official documentation. Sessions, block sizes and costs in the figures are a model I wrote, tagged <span class="td-ev">model</span>. With one exception in the compaction section, nothing here was measured on a real task.
+
+Unless a control says otherwise, everything is compared on a 200K window at the same prices. That isolates the harness, but it is not how the tools ship: Codex's bundled models default to a 272K window, and Claude Code can run at 1M. The first two figures let you change the window.
+
+<TD id="f-race" />
+
+### Spec sheet
+
+Every row is taken apart in a section below.
+
+|  | Codex | Claude Code | pi |
+| --- | --- | --- | --- |
+| Compaction trigger | 90% of window; hard stop at 95% | window − min(max output, 20K) − 13K | window − 16,384 |
+| Kept verbatim | Recent user messages, up to 20K tokens (64K remote) | A short tail of recent messages; up to 5 files re-read from disk, plus skills, plan and CLAUDE.md | The most recent 20K tokens or more, tool results included |
+| Summary | Local prompt, or an encrypted server item | 9 sections, analysis first | 6 sections, updated in place |
+| Tool output | 10K tokens, head and tail | 30K characters, then a file and a 2KB preview | Last 50KB or 2,000 lines, plus a temp file |
+| Old results | Kept | Cleared after 65 minutes idle | Kept (extensions can edit) |
+| Idle cache | Provider-managed | Lets it expire | Warms it when that pays |
+| MCP tools | Deferred, with BM25 search | Deferred, with server-side search | Code mode by default |
+| Subagents | Fork strips tool traffic | Fresh, or a full fork | Extension only |
+
+## Where the alarm goes off
+
+The first decision any harness makes is when to stop and shrink the history. All three compute a token threshold from the model's context window, but the formulas differ in kind, not just in degree.
+
+<span class="td-h cx">Codex</span> uses a fraction: auto-compaction fires at 90% of the window, or at the user's configured limit if that's lower <span class="td-ev">src</span>. It also treats only 95% of the window as usable, so there's a hard ceiling at 95%. <span class="td-h pi">pi</span> uses a fixed reserve: compact when context exceeds the window minus 16,384 tokens <span class="td-ev">src</span>. <span class="td-h cc">Claude Code</span> stacks two deductions: first it subtracts room for the model's reply (the smaller of the max output setting and 20,000), then it compacts 13,000 tokens below that <span class="td-ev">bin</span>. It also has a warning band 20,000 below the trigger and refuses new requests within 3,000 of the effective window.
+
+The difference matters most at the extremes. A fraction scales with the window, so on a 1M-token model Codex still keeps 100K tokens of headroom. A fixed reserve doesn't: pi on the same model lets the context run to 983,616 tokens.
+
+<TD id="f-trig" />
+
+Here is each rule as it ships.
+
+````rust title="Codex · protocol/src/openai_models.rs:579"
+pub fn auto_compact_token_limit(&self) -> Option<i64> {
+    let context_limit = self
+        .resolved_context_window()
+        .map(|context_window| (context_window * 9) / 10);
+    let config_limit = self.auto_compact_token_limit;
+    if let Some(context_limit) = context_limit {
+        return Some(
+            config_limit.map_or(context_limit,
+                |limit| std::cmp::min(limit, context_limit)),
+        );
+    }
+    config_limit
+}
+````
+
+````js title="Claude Code · 2.1.317 binary, minified"
+var pVr=20000;
+function Ree(e,n){let r=Math.min(e.maxOutputTokens,pVr),
+  s=Pp()?n:void 0,{window:h}=Jb(e,s);return h-r}
+function fVr(e){let n=Math.min(e.maxOutputTokens,pVr);
+  return e.contextWindow-n}
+var bZt=13000;var cVr=3000,Xwe=0.2;
+// in the /context breakdown:
+nr=ts?Ree(Ic(n),dt)-bZt:void 0
+// in the overflow report:
+blockingLimitTokens:fVr(E)-cVr
+````
+
+````ts title="pi · coding-agent/src/core/compaction/compaction.ts:267"
+export function shouldCompact(contextTokens: number,
+    contextWindow: number, settings: CompactionSettings): boolean {
+  if (!settings.enabled) return false;
+  return contextTokens > contextWindow - settings.reserveTokens;
+}
+
+// defaults, line 128
+reserveTokens: 16384,
+keepRecentTokens: 20000,
+````
+
+Each harness also checks at different moments. Codex checks before a turn, in the middle of a turn (between tool calls) and after it. pi checks between turns after tool results, before sending a new prompt, and once more as a recovery path: if the provider rejects a request for overflowing, or the reply stops early with a length error, pi compacts and retries <span class="td-ev">src</span>. Claude Code adds a circuit breaker: if the context refills to the limit within 3 turns of a compaction, 3 times in a row, it stops and tells you that auto-compact is thrashing <span class="td-ev">bin</span>.
+
+### How full is it, really?
+
+None of the three runs the model's tokenizer locally, so the number each trigger is compared against is partly a guess. Codex and pi use the same method: take the token count the server reported with the last response, and add an estimate for everything added since, at 4 bytes per token for Codex and 4 characters per token for pi <span class="td-ev">src</span>. Claude Code also estimates from a bytes-per-token ratio <span class="td-ev">bin</span>.
+
+The anchor is exact and only the tail since the last response is guessed. That tail is usually small. It is large right after a tool returns 80KB of minified JSON, which is when the decision matters most. Dense content packs more tokens into each byte than the estimate assumes, so the real count runs ahead of the harness's belief. pi's version is further off for Chinese, Japanese and Korean text, because one such character is three bytes and pi counts characters.
+
+Each harness has a backstop. pi treats a provider's overflow error as a signal to compact and retry once. Codex's remote compaction path first swaps the newest oversized tool outputs for a short note if the history still doesn't fit. Claude Code's 3,000-token blocking margin and 13,000-token buffer work as error bars.
+
+## The shape of a request
+
+A prompt cache only rewards an unchanged prefix. The moment one early byte changes, everything after it is reprocessed at full price. So the most important structural question is where each harness puts things that change.
+
+The three layouts look different on the wire. <span class="td-h cx">Codex</span> sends no separate system prompt at all: the base instructions are the first developer message in the input, followed by one bundled developer message (permissions, tool namespaces, skills), then a user message with the environment and AGENTS.md text <span class="td-ev">src</span>. <span class="td-h cc">Claude Code</span> splits its system prompt at a literal marker, `__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__`. The part before it is cached with a "global" scope, the part after with an organization scope <span class="td-ev">bin</span>. Environment, date, skill listings and about 80 other kinds of reminder arrive later as messages. <span class="td-h pi">pi</span> builds its system prompt from tagged sections and, when one changes, appends a patch as a later system message instead of editing the first one <span class="td-ev">src</span>.
+
+Underneath, they agree on the rule: never rewrite the past. Try the events below.
+
+<TD id="f-req" />
+
+Three events end up appended in all three harnesses. A newly connected MCP server becomes a delta message in Codex, a `deferred_tools_delta` attachment in Claude Code, and an appended `mcp_servers` section patch in pi, whose docs say it's done "so earlier messages stay cached". Loading a tool on demand also appends: Codex puts the definitions into the input as a tool-search result rather than changing the `tools` array, and pi uses Anthropic's `tool_addition` blocks for the same reason. Switching models costs everyone the whole cache, because caches are per model.
+
+Compaction and clearing old tool results are the deliberate exceptions. They trade one expensive cache rewrite for a much shorter context afterwards. Only Claude Code does the second kind.
+
+## When a tool talks too much
+
+A test suite that prints 200KB of logs can fill a fifth of a window in one call. All three harnesses cap tool output, and they disagree about which part of the output to keep.
+
+- <span class="td-h cx">Codex</span> keeps both ends. The default limit is 10,000 tokens (estimated as 4 bytes each), split 50/50 between head and tail, with `…N tokens truncated…` in the middle and a header with the original size <span class="td-ev">src</span>.
+- <span class="td-h cc">Claude Code</span> keeps the start. Bash output over 30,000 characters is written to a file; the model gets a 2KB preview and the path, and can read the rest if it wants to <span class="td-ev">bin</span> <span class="td-ev">docs</span>. I tried it: a 107KB command output came back as a 2KB preview of the start.
+- <span class="td-h pi">pi</span> keeps the end for `bash`: the last 2,000 lines or 50KB, whichever is smaller, plus a note with the full output's temp-file path <span class="td-ev">src</span>. Its `read` tool keeps the start instead.
+
+Which one is right depends entirely on where the important line is. Move the error around.
+
+<TD id="f-trunc" />
+
+````rust title="Codex · utils/string/src/truncate.rs:149"
+fn split_budget(budget: usize) -> (usize, usize) {
+    let left = budget / 2;
+    (left, budget - left)
+}
+
+fn assemble_truncated_output(prefix: &str, suffix: &str,
+                             marker: &str) -> String {
+    // prefix + "…N tokens truncated…" + suffix
+    out.push_str(prefix);
+    out.push_str(marker);
+    out.push_str(suffix);
+    out
+}
+````
+
+````ts title="pi · coding-agent/src/core/tools/truncate.ts:11"
+export const DEFAULT_MAX_LINES = 2000;
+export const DEFAULT_MAX_BYTES = 50 * 1024; // 50KB
+export const GREP_MAX_LINE_LENGTH = 500; // Max chars per grep match line
+
+// bash.ts keeps the tail and appends:
+// [Showing lines X-Y of N. Full output: <tempfile>]
+````
+
+Two of the three make the output recoverable. Claude Code and pi both leave the text on disk and say where, so a careful model can grep it. Codex keeps both ends in context but discards the middle, and there's no file to go back to. Recoverable has limits in Claude Code as well: the binary caps how much output is saved, and it contains a second preview shape, 2,000 bytes of head plus up to 6,000 of tail, that an ordinary long command didn't trigger when I tried one <span class="td-ev">bin</span>. Claude Code applies the same save-to-file treatment to MCP results over 50,000 characters, warns at 10,000 tokens, and caps MCP output at 25,000 tokens by default <span class="td-ev">bin</span> <span class="td-ev">docs</span>.
+
+## Compaction, frame by frame
+
+Every harness compacts by asking a model to summarize the history and then building a new, shorter history around that summary. The interesting part is what survives verbatim, because a summary is lossy and everything kept verbatim isn't.
+
+<TD id="f-compact" />
+
+<span class="td-h cx">Codex</span>, compacting locally, rebuilds the history as: a fresh copy of its initial context, then the most recent *user* messages up to 20,000 tokens (newest first, older ones dropped once the budget runs out), then the summary <span class="td-ev">src</span>. No assistant message, tool call or tool result survives. The theory is clear enough: what the user asked for is the one thing you can't reconstruct, and everything else is in the summary or on disk.
+
+````rust title="Codex · core/src/compact.rs:64, 745"
+const COMPACT_USER_MESSAGE_MAX_TOKENS: usize = 20_000;
+
+fn build_compacted_history_with_limit(
+    mut history: Vec<ResponseItemEnvelope>,   // fresh initial context
+    user_messages: &[CompactedUserMessage<'_>],
+    summary_text: &str,
+    max_tokens: usize,
+) -> Vec<ResponseItemEnvelope> {
+    let mut remaining = max_tokens;
+    for message in user_messages.iter().rev() {      // newest first
+        if remaining == 0 { break; }
+        let tokens = approx_token_count(&message.message);
+        let preserve_content = tokens <= remaining
+            && content.iter().all(|part| matches!(part, ContentItem::InputText { .. }));
+        if !preserve_content {
+            // keep only the text parts, truncated to what's left of the budget
+            set_annotated_content(&mut item, truncate_annotated_text(parts, remaining));
+        }
+        …
+        if tokens > remaining { break; }   // that message was the last one
+````
+
+On OpenAI's own providers Codex doesn't summarize locally at all. It sends a normal request with a special compaction-trigger item appended, and the server returns an encrypted compaction item that replaces the history <span class="td-ev">src</span>. The client never sees the summary text. What Codex keeps alongside it is larger: user messages and some agent and developer messages, up to 64,000 tokens.
+
+<span class="td-h cc">Claude Code</span> keeps very little conversation: a short tail of the most recent messages, placed after the summary with a note that they are "kept verbatim" <span class="td-ev">bin</span>. I don't know the rule that sizes the tail. Most of what it restores comes from disk instead: up to 5 recently touched files at up to 5,000 tokens each, invoked skills (5,000 tokens each, 25,000 total), the plan, project CLAUDE.md and the skill listing <span class="td-ev">bin</span> <span class="td-ev">docs</span>. It reads the files again rather than keeping old tool results, so they are current, not whatever was true when the result was recorded.
+
+<span class="td-h pi">pi</span> keeps the most conversation. It finds a cut point so that at least 20,000 tokens of the most recent messages stay as they were, tool results included, and summarizes everything before it <span class="td-ev">src</span>. If the cut lands inside a turn, it writes a second, smaller summary of that turn's beginning and merges the two. The summary also carries running lists of files read and modified.
+
+> **One measurement.** The session that produced this page ran in Claude Code on a 1M-token window, and its session file records one compaction, started by hand. Context went from 301,772 tokens to 16,303 in 30.7 seconds, with two messages kept verbatim. The next request was still about 196,000 tokens. Everything that isn't conversation gets attached again, and in that session, which had an unusually large number of MCP tools connected, the list of deferred tool names alone ran to roughly 490,000 characters. This is one session and one compaction, so read it as an example of the mechanism and nothing more.
+
+### What can it still answer?
+
+The figure above shows sizes. The more useful question is what the model can still tell you after a compaction, and where that answer comes from. Pick how old the detail is. Each cell follows from the rules described above: what's kept verbatim, what's re-read from disk, and what's left to the summary.
+
+<TD id="f-probe" />
+
+## What the summarizer reads
+
+The prompts tell you what each team thinks a handoff needs. Here are their structures, quoted from the source and the binary.
+
+<TD id="prompts" />
+
+The inputs differ as much as the prompts. Codex and Claude Code hand the summarizer the history as conversation items. pi serializes it into plain text first: `[User]:` and `[Assistant]:` lines, thinking dropped, and every tool result cut to 2,000 characters <span class="td-ev">src</span>. The summarizer reads far less, which makes compaction cheaper and faster, at the cost of never seeing the bulk of what tools returned.
+
+<TD id="f-sumin" />
+
+The update prompt deserves more attention than it gets. Most harnesses re-summarize a history that already contains the previous summary, so details pass through the summarizer again each time and can be paraphrased away. pi passes the previous summary in separately, inside `<previous-summary>` tags, with explicit instructions to keep it and edit only what changed.
+
+## Idle time and the cache clock
+
+Anthropic's prompt cache lasts 5 minutes or 1 hour after the last read. When you walk away from an agent, the cache expires, and the next request pays the write price on the entire context again. Two of the three harnesses have opinions about this, and they are opposites.
+
+<span class="td-h pi">pi</span> tries to keep the cache warm. While idle, it can send a refresh request at 90% of the cache lifetime, if the expected saving is at least $0.05 and you've been idle less than 30 minutes <span class="td-ev">src</span>. The expected saving is computed with a measured constant: a 15% chance that you'll come back before the cache expires.
+
+<span class="td-h cc">Claude Code</span> does the reverse. After 3,900 seconds idle, it clears the content of old tool results on the next request, keeping the 12 most recent tool uses, if that frees at least 20,000 tokens <span class="td-ev">bin</span>. 3,900 seconds is 65 minutes, five minutes past the longest cache lifetime. My reading of the constant is that it only clears when the cache is already gone, so the rewrite was going to happen anyway and might as well be smaller.
+
+<span class="td-h cx">Codex</span> does neither. OpenAI's cache is managed by the provider with no separate write fee, so there's nothing comparable to optimize.
+
+<TD id="f-idle" />
+
+````ts title="pi · packages/ai/src/cache-warming.ts:31, 88"
+export const CACHE_WARMING_MAX_IDLE_AGE_MS = 30 * 60_000;
+export const CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS = 0.05;
+/** Chance that a real request arrives before the cache entry
+ *  expires while the agent sits idle. Measured from our own usage */
+export const CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY = 0.15;
+
+const missCost = Math.max(0, cacheMissCost - cacheHitCost);
+const continuationProbability = phase === "idle"
+  ? CACHE_WARMING_IDLE_CONTINUATION_PROBABILITY : 1;
+const expectedSavings = continuationProbability * missCost - warmCost;
+````
+
+````js title="Claude Code · 2.1.317 binary, minified"
+var zJt=64,GJt=12,l5e={
+  minIdleSeconds:3900,
+  keepToolUses:GJt,
+  clearAtLeastTokens:jQn,
+  triggerToolUsesBelowCount:3,
+  minTriggerToolUses:GJt+15}
+// defined nearby:
+jQn=20000
+// cleared results become:
+"[Old tool result content cleared]"
+````
+
+Play with it and pi's warming turns out to be rare by design. At $3 per million input tokens with a 5-minute cache, a refresh only pays off in expectation above roughly 230K tokens of context. With a 1-hour cache, the first refresh would be due at 54 minutes, past the 30-minute idle limit, so it never fires while idle. Warming exists for big contexts on expensive models and, mostly, for the case where the agent is busy running a long tool call (pi assumes certain continuation then, and allows up to 60 minutes).
+
+## Paying for tools you never call
+
+Tool definitions are part of the prompt. A server with a few dozen tools can cost thousands of tokens on every request before the model does anything. All three harnesses now avoid sending MCP tool definitions up front, each in a different way.
+
+- <span class="td-h cx">Codex</span> registers MCP tools as deferred whenever the model supports tool search, which every bundled model does. The model sees namespaces and a `tool_search` tool that runs BM25 over tool metadata and returns up to 8 matches <span class="td-ev">src</span>.
+- <span class="td-h cc">Claude Code</span> defers every MCP tool by default and lists only their names; a ToolSearch tool loads full schemas on request, using Anthropic's server-side tool search <span class="td-ev">bin</span> <span class="td-ev">docs</span>. A server can opt out with `alwaysLoad`.
+- <span class="td-h pi">pi</span> goes further by default: MCP tools aren't declared to the model at all. It gets one `codemode` tool and writes JavaScript that calls them <span class="td-ev">src</span>. Deferred search and direct declaration are config options.
+
+Skills get the same treatment everywhere: only a name and short description go into the prompt, and the model reads the full instructions when it needs them. The caps differ. Codex gives the catalog 2% of the window and cuts descriptions at 1,024 characters. Claude Code gives it 1% (8,000 characters at 200K) and cuts at 1,536 characters. pi lists everything with a file path and lets the model read the file.
+
+## Subagents
+
+A subagent is the cleanest context tool there is: do noisy work in a separate window and bring back only the conclusion. The question is how much of the parent's window the child starts with.
+
+<TD id="f-sub" />
+
+<span class="td-h cx">Codex</span>'s fork is the most surgical. The child gets the parent's messages, including final answers, but every tool call, tool result and reasoning item is stripped <span class="td-ev">src</span>. That makes the child small and well-informed, but it can reuse the parent's cache only up to the first stripped item; after that the prefix is different. A newer option, `preserve_fork_prefix`, keeps everything for exactly that reason. Defaults allow up to 6 child threads, one level deep.
+
+````rust title="Codex · core/src/agent/history.rs:43"
+fn keep_forked_rollout_item(item: &RolloutItem, preserve_context_baselines: bool) -> bool {
+    match item {
+        RolloutItem::ResponseItem(envelope) => match &envelope.item {
+            ResponseItem::Message { role, phase, .. } => match role.as_str() {
+                "system" | "developer" | "user" => true,
+                "assistant" => matches!(phase,
+                    Some(MessagePhase::PartialAnswer | MessagePhase::FinalAnswer)),
+                _ => false,
+            },
+            ResponseItem::Reasoning { .. }
+            | ResponseItem::FunctionCall { .. }
+            | ResponseItem::FunctionCallOutput { call_id: Some(_), .. }
+            | ResponseItem::ToolSearchOutput { .. }
+            | ResponseItem::Compaction { .. } … => false,
+        },
+        // Child threads inherit model context, not the parent's cumulative usage state.
+        RolloutItem::TokenUsageRecord(_) => false,
+        …
+````
+
+<span class="td-h cc">Claude Code</span> offers the two ends. A subagent starts fresh, with its own prompt, the task, CLAUDE.md and git status, and returns only its final report <span class="td-ev">docs</span>. A fork inherits the parent's full history and system prompt, so its first request is mostly a cache read.
+
+<span class="td-h pi">pi</span> doesn't ship subagents. The README lists them as deliberately skipped. An example extension spawns separate `pi` processes in JSON mode with no session, which is about as isolated as a child can be.
+
+## On disk
+
+All three write sessions as JSONL, one event per line, and all three can resume. What differs is how a compaction is recorded and how much of the file has to be replayed to rebuild the context.
+
+<TD id="f-disk" />
+
+- <span class="td-h cx">Codex</span> writes rollouts to `~/.codex/sessions/…/rollout-…jsonl`. A compaction is a `Compacted` item carrying the full replacement history, so resume finds the last one and replays only what came after <span class="td-ev">src</span>.
+- <span class="td-h cc">Claude Code</span> writes `~/.claude/projects/<cwd>/<session>.jsonl`. A compaction is a `compact_boundary` system record with `parentUuid: null`, which cuts the message chain, followed by the summary message. The record also lists tools that had been loaded on demand, so they stay loaded across the boundary <span class="td-ev">bin</span>; I checked this format against transcripts on disk.
+- <span class="td-h pi">pi</span> writes a tree: every entry has an `id` and `parentId`. `/tree` moves between branches in the same file and can summarize the branch you leave. Context is rebuilt by walking from the current leaf to the root and starting at the latest compaction on that path <span class="td-ev">src</span>.
+
+## All of it at once
+
+Each section so far isolated one mechanism. In a real session they interact: how much a tool's output is cut decides how fast the window fills, which decides how often compaction runs, which decides how much of the cache is thrown away. This last figure runs one session through all three harnesses with every rule from this page switched on.
+
+All three run on the same model at the same prices, so the comparison is about the harness. Two simplifications favor Claude Code and should be kept in mind: every tool call is treated as a shell command, which is where its 30,000-character cap applies, and going back to read a saved output file costs nothing.
+
+<TD id="f-all" />
+
+Both tool-heavy sessions show the same pattern, and it comes from a rule that has nothing to do with compaction. In this model Claude Code compacts roughly half as often as the other two, and writes far fewer tokens to the cache. Claude Code replaces any command output over 30,000 characters with a 2KB preview, so a 150KB test log costs it about 500 tokens. Codex keeps 10,000 tokens of the same log and pi keeps 12,800. Outputs between 30,000 characters and 50KB are where the gap is widest: Claude Code previews them, while Codex and pi keep up to 10,000 and 12,800 tokens of each. The trade runs the other way too. A model under Claude Code has to go and read the file to see what it skipped, and this simulation doesn't charge for that call. If the model needs the middle of most outputs, the advantage shrinks or reverses. Running one scripted task through all three tools and plotting their real token usage would settle it. I haven't done that.
+
+In the conversation-heavy session the three converge, because there's little tool output to cut. What's left is the trigger arithmetic from the first section and what each keeps after a compaction.
+
+## What I'd take from each
+
+From <span class="td-h cx">Codex</span>: keep the user's own words through compaction. The rule that recent user messages survive verbatim is cheap and protects the one thing a summary is most likely to blur, which is what was asked.
+
+From <span class="td-h cc">Claude Code</span>: re-read state instead of remembering it. Re-attaching files from disk after a compaction gives the model current file contents, and saving oversized output to a file keeps it within reach without spending context on it. The idle clearing, timed just past the cache lifetime, is the most cost-aware constant in any of the three.
+
+From <span class="td-h pi">pi</span>: edit the summary in place, and keep a real tail of conversation. The update prompt is a few lines of text, and I suspect it does more for coherence in long sessions than any threshold tuning.
+
+All three already agree on one thing: append, never edit. Each has rearranged its prompt so that changes arrive at the end, which is what taking the cache seriously looks like in practice.
+
+---
+
+## Appendix: method, checks and citations
+
+Codex and pi were read from source at the commits in the byline. Claude Code ships as a compiled binary, so its column comes from the official documentation and from string constants found in the 2.1.317 binary with `strings`. Those constants come from minified code. Where I'm reading intent into a variable name instead of a stated rule, the text says so.
+
+Quoted from the code: every claim that appears with an excerpt was copied from the source or the binary at those versions, and the commands below reproduce the key constants. That covers the trigger formulas, the truncation caps, Codex's compaction budget and fork filter, pi's cache-warming formula, Claude Code's idle-clearing constants and the summary prompts.
+
+Read once: claims without an excerpt come from a single reading pass and have not been re-verified. The main ones are pi's three MCP modes, the skill-catalog caps, Codex's 64K remote budget and what Claude Code re-attaches after a compaction. Treat those as likely, not confirmed.
+
+Modeled: every session, block size and dollar figure in the charts. The idle figure assumes 45% of context is old tool results. The recall grid is derived from the rules and was not tested against the tools.
+
+### Check it yourself
+
+Every exact number on this page can be reproduced in a few minutes. Minified names in the Claude Code binary change between builds, so those commands search for values, not variable names.
+
+```bash
+# Codex
+git clone --depth 1 https://github.com/openai/codex && cd codex/codex-rs
+grep -n "fn auto_compact_token_limit" -A11 protocol/src/openai_models.rs
+grep -n "COMPACT_USER_MESSAGE_MAX_TOKENS" core/src/compact.rs
+cat prompts/templates/compact/prompt.md
+```
+
+```bash
+# pi
+git clone --depth 1 https://github.com/badlogic/pi-mono && cd pi-mono
+grep -n "reserveTokens\|keepRecentTokens" packages/coding-agent/src/core/compaction/compaction.ts
+grep -n "CACHE_WARMING" packages/ai/src/cache-warming.ts
+grep -n "DEFAULT_MAX" packages/coding-agent/src/core/tools/truncate.ts
+```
+
+```bash
+# Claude Code (reads the installed binary; does not run it)
+B="$(readlink -f "$(command -v claude)")"
+strings "$B" | grep -o 'minIdleSeconds:[0-9]*'
+strings "$B" | grep -o 'Autocompact is thrashing[^.]*'
+strings "$B" | grep -o 'Your task is to create a detailed summary of the conversation so far'
+```
+
+### Citations
+
+1. Codex trigger: `codex-rs/protocol/src/openai_models.rs:579-590` (90%); 95% effective window in the model catalog; check points in `core/src/session/turn.rs`.
+2. Codex prompt order: `core/src/client.rs:1213-1222`; AGENTS.md discovery and 32 KiB cap: `core/src/agents_md.rs`, `config/src/config_toml.rs:77`.
+3. Codex truncation: `models-manager/src/model_info.rs:127`, `utils/string/src/truncate.rs:149-152`.
+4. Codex compaction: `core/src/compact.rs:64, 732-800` (20K user-message budget); remote path `core/src/compact_remote_v2_attempt.rs`, 64K budget in `compact_remote_v2.rs`; prompts in `prompts/templates/compact/`.
+5. Codex tools and forks: `core/src/mcp_tool_exposure.rs`, `tools/src/tool_discovery.rs`; `core/src/agent/history.rs:43-90, 266`.
+6. pi compaction: `packages/coding-agent/src/core/compaction/compaction.ts:128-129, 507-582`; serializer `compaction/utils.ts:95-150`.
+7. pi truncation: `packages/coding-agent/src/core/tools/truncate.ts:11-13`, `tools/bash.ts`, `tools/read.ts`.
+8. pi cache warming: `packages/ai/src/cache-warming.ts:31-49, 85-97`; MCP modes: `docs/mcp.md`.
+9. Claude Code: strings in the 2.1.317 binary (autocompact buffer 13000, idle clearing `minIdleSeconds:3900`, `keepToolUses:12`, summary prompt text, re-attach limits); documentation at code.claude.com/docs (memory, costs, sub-agents, MCP, prompt caching).
+
+> These are moving targets. Claude Code's thresholds in particular have changed between releases, and it moved from 2.1.317 to 2.1.321 while this was being written. The constants here were read from 2.1.317 and re-checked on 2.1.319, where the values are the same under different minified names (`var qan=13000;var CZr=3000,jCe=0.2`). The kept-tail wording was seen in 2.1.321.
+
+<TDScript />
