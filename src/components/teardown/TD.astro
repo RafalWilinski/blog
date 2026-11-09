@@ -1,0 +1,16 @@
+---
+// One figure or raw block of the harness teardown post. The markup lives in blocks.json
+// so MDX never has to parse it; teardown.js (loaded once by TDScript) brings it to life.
+import blocks from "./blocks.json";
+import "./teardown.css";
+
+interface Props {
+	id: keyof typeof blocks;
+}
+
+const { id } = Astro.props;
+const html = blocks[id];
+if (!html) throw new Error(`Unknown teardown block: ${String(id)}`);
+---
+
+<div class="td not-prose" set:html={html} />
